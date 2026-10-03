@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conteo de pisos · Sismo Colombia 2026</title>
+<meta name="description" content="Puntos afectados por el sismo de Colombia (10-ago-2026) para contar pisos con Street View y registrar el aporte.">
+<style>
+  :root{
+    --bg:#F4F1EA; --panel:#FFFFFF; --ink:#1F2A24; --muted:#5E6B63; --line:#D9D4C7;
+    --accent:#B5421A; --accent-ink:#FFFFFF; --ok:#2E6B4F; --ok-bg:#E3EFE8; --ok-ink:#FFFFFF;
+    --warn:#8A5A00; --warn-bg:#F7E9C8; --geo:#3C4F8A; --geo-bg:#E2E7F6; --err:#A3261A;
+    --focus:#1D5E8A; --shadow:0 1px 2px rgba(31,42,36,.08); --scrim:rgba(20,26,23,.45);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#141A17; --panel:#1C2420; --ink:#E7ECE8; --muted:#9DAAA2; --line:#2F3A34;
+      --accent:#E0693F; --accent-ink:#1A0F0A; --ok:#7CC9A0; --ok-bg:#1F3328; --ok-ink:#0E1A13;
+      --warn:#E4BB55; --warn-bg:#3A2F12; --geo:#9DB1EE; --geo-bg:#222B4A; --err:#F0907F;
+      --focus:#7FB8CE; --shadow:none; --scrim:rgba(0,0,0,.6);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--sans);-webkit-text-size-adjust:100%}
+  body.lock{overflow:hidden}
+  a{color:inherit}
+  [hidden]{display:none!important}
+  :focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
+  .wrap{max-width:980px;margin:0 auto;padding:0 16px}
+  header.top{padding:28px 0 18px;border-bottom:1px solid var(--line)}
+  .eyebrow{font:600 12px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+  h1{font:700 clamp(26px,5vw,38px)/1.12 var(--serif);margin:10px 0 8px;letter-spacing:-.01em}
+  .lead{margin:0;max-width:62ch;color:var(--muted)}
+  .banner{border-radius:8px;padding:10px 14px;margin:16px 0 0;font-size:14px;border:1px solid}
+  .banner.warn{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+  .banner.err{background:var(--panel);color:var(--err);border-color:var(--err)}
+  details.how{margin:18px 0 0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0 16px}
+  details.how summary{cursor:pointer;padding:12px 0;font-weight:600}
+  details.how ol{margin:0 0 14px;padding-left:20px;color:var(--muted)}
+  details.how li{margin:4px 0}
+
+  .rango{margin:18px 0 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .rango h2{margin:0 0 4px;font:700 18px/1.3 var(--sans)}
+  .rango p.hint{margin:0 0 12px;color:var(--muted);font-size:14px}
+  .rrow{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+  .lbl-s{display:block;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+  .rrow input{width:120px;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:600 16px var(--mono)}
+  .rmsg{font-size:14px;color:var(--muted);min-height:1.5em;margin-top:10px}
+  .rmsg.err{color:var(--err)}
+  .progress{margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .bar{flex:1 1 200px;height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+  .bar>i{display:block;height:100%;width:0;background:var(--ok);border-radius:99px;transition:width .3s}
+  .progress span{font:500 13px var(--mono);color:var(--muted)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 14px var(--sans);text-decoration:none;cursor:pointer}
+  .btn:hover{border-color:var(--ink)}
+  .btn:disabled{opacity:.55;cursor:default}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.done{background:var(--ok);border-color:var(--ok);color:var(--ok-ink)}
+  .btn.sm{min-height:36px;padding:4px 10px;font-size:13px}
+  .btn.danger{background:transparent;color:var(--err);border-color:var(--err)}
+  .btn.danger:hover{background:var(--err);color:var(--panel)}
+  .mborrar{margin-left:auto;background:none;border:0;color:var(--err);font:600 12.5px var(--sans);cursor:pointer;min-height:30px;padding:0 4px;text-decoration:underline;text-underline-offset:3px}
+  .ext::after{content:"↗";font-weight:400;opacity:.7}
+
+  .bar2{display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px;padding:14px 0 6px}
+  .bar2 .f{flex:1 1 200px}
+  .bar2 input[type=search],.bar2 select{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit}
+  .seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{min-height:44px;padding:6px 12px;border:0;background:var(--panel);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+  .count{font-size:14px;color:var(--muted);padding:4px 0}
+
+  main{padding:8px 0 32px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 10px;box-shadow:var(--shadow);display:grid;grid-template-columns:1fr auto;gap:8px 18px;align-items:center}
+  .card.done{border-color:var(--ok);background:var(--ok-bg)}
+  .num{font:700 13px var(--mono);color:var(--muted)}
+  .cardhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:4px}
+  .code{font:700 15px var(--mono)}
+  .chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--bg);white-space:nowrap}
+  .chip.geo{background:var(--geo-bg);color:var(--geo);border-color:transparent}
+  .chip.ok{background:var(--ok);color:var(--ok-ink);border-color:transparent}
+  .chip.duda{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+  .ubi-l{display:block;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:2px 0 2px}
+  .dir{margin:0;font-weight:600}
+  .desc{margin:8px 0 0;font-size:14.5px}
+  .desc.clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .more{background:none;border:0;padding:4px 0;min-height:32px;color:var(--accent);font:inherit;font-size:13.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+  .reporte{background:var(--bg);border:1px solid var(--line);border-radius:10px;margin:0 0 18px;padding:0 14px}
+  .reporte summary{cursor:pointer;padding:10px 0;font-weight:600}
+  .reporte .cont{padding:0 0 12px}
+  .reporte .cont p{margin:0 0 8px;font-size:14.5px}
+  .fhint{display:block;margin-top:8px;font-size:12.5px;color:var(--muted)}
+  .coord{margin:6px 0 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font:13px var(--mono);color:var(--muted)}
+  .copy{background:none;border:1px solid var(--line);border-radius:6px;padding:2px 8px;min-height:30px;color:var(--ink);font:12px var(--sans);cursor:pointer}
+  .actions{display:flex;flex-direction:column;gap:8px;min-width:210px}
+  .empty{padding:40px 16px;text-align:center;color:var(--muted)}
+  .pager{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px}
+  .pager button{min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;cursor:pointer}
+  .pager button:disabled{opacity:.4;cursor:default}
+  footer{padding:24px 0 48px;color:var(--muted);font-size:13.5px;border-top:1px solid var(--line)}
+
+  /* panel */
+  .scrim{position:fixed;inset:0;background:var(--scrim);z-index:20}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(600px,100%);background:var(--panel);z-index:21;display:flex;flex-direction:column;box-shadow:-8px 0 24px rgba(0,0,0,.18)}
+  .dhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .dhead .t{flex-basis:100%;min-width:0}
+  .dhead .t b{font:700 16px var(--mono)}
+  .dhead .t p{margin:2px 0 0;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+  .dhead .close{min-width:44px}
+  .dbody{flex:1;overflow:auto;padding:16px}
+  .dfoot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+  .dfoot .btn{flex:1 1 150px}
+  .dfoot .estado{flex-basis:100%;font-size:13.5px;color:var(--muted);min-height:1.2em}
+  .dfoot .estado.err{color:var(--err)}
+  .dfoot .estado.ok{color:var(--ok)}
+  .sec-t{margin:4px 0 12px;font:700 13px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .q{margin:0 0 16px}
+  .q>.lbl,.q>label.lbl{display:block;font-weight:600;margin:0 0 4px}
+  .q .h{display:block;color:var(--muted);font-size:13px;margin:0 0 6px}
+  .q input[type=text],.q input[type=number],.q input[type=url],.q textarea,.q select{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+  .q textarea{min-height:76px;resize:vertical}
+  .q.inv input,.q.inv select,.q.inv .opts{outline:2px solid var(--err);outline-offset:2px;border-radius:8px}
+  .q .msg{display:block;color:var(--err);font-size:13px;margin-top:4px}
+  .opts{display:flex;flex-direction:column;gap:2px}
+  .opts.row{flex-direction:row;flex-wrap:wrap;gap:4px 18px}
+  .opts label{display:flex;gap:8px;align-items:center;min-height:36px;cursor:pointer}
+  .opts input{width:18px;height:18px;flex:none}
+  .inl{display:flex;gap:8px}
+  .inl input{flex:1}
+  .grp{border:1px solid var(--line);border-radius:10px;padding:12px 12px 0;margin:0 0 16px}
+  .grp>h3{margin:0 0 10px;font:700 13px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .ro{font:700 15px var(--mono)}
+
+  .drop{border:2px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted);background:var(--bg);cursor:pointer}
+  .drop.over,.drawer.over .drop{border-color:var(--accent);color:var(--ink)}
+  .drop b{color:var(--ink)}
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+  .th{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+  .th img{display:block;width:100%;height:110px;object-fit:cover;background:var(--line)}
+  .th .noimg{height:110px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);padding:6px;text-align:center}
+  .th .meta{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px;font:12px var(--mono)}
+  .th .meta button{background:none;border:0;color:var(--err);cursor:pointer;font:600 12px var(--sans);min-height:30px}
+
+  .foro{margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
+  .hilo{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px;background:var(--panel)}
+  .hilo.pend{border-color:var(--warn);background:var(--warn-bg)}
+  .mhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+  .mtext{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+  .resp{margin:8px 0 0 14px;padding:6px 0 0 12px;border-left:3px solid var(--ok)}
+  .resp .mtext{font-size:15px}
+  .rbox{margin-top:8px}
+  .rbox textarea,.nuevo textarea{width:100%;min-height:64px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
+  .rbox .inl,.nuevo .inl{margin-top:6px;justify-content:flex-end}
+  .vacio{color:var(--muted);font-size:14px;margin:0 0 10px}
+  .toast{position:fixed;left:16px;bottom:16px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;z-index:30;max-width:90vw}
+
+  @media (max-width:700px){
+    .card{grid-template-columns:1fr}
+    .actions{min-width:0}
+    .drawer{width:100%}
+    .toast{bottom:auto;top:12px;right:16px;max-width:none}
+    .dhead #pmaps,.dhead #pficha{flex:1}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="eyebrow">Sismo de Colombia · 10 de agosto de 2026 · M 7,4</div>
+  <h1>Conteo de pisos con Street View</h1>
+  <p class="lead">Ingresa tu rango de puntos, ubica cada edificio en Google Maps, cuenta sus pisos en Street View y registra tu aporte aquí mismo.</p>
+  <div class="banner warn" id="aviso" hidden>Prototipo: los aportes, fotos y mensajes se guardan solo en este navegador. En la versión final se guardan en Google Sheets y Google Drive.</div>
+  <div class="banner err" id="errconn" hidden></div>
+  <details class="how">
+    <summary>Cómo participar</summary>
+    <ol>
+      <li>Escribe el rango de N° que te asignaron y pulsa <b>Ver mis puntos</b>. Puedes filtrar por municipio.</li>
+      <li>Pulsa <b>Abrir en Google Maps</b> (se abre en otra pestaña). Ahí entra a Street View arrastrando el muñequito amarillo o tocando la foto de la calle.</li>
+      <li>Vuelve a esta página y pulsa <b>Registrar aporte</b>. Si el edificio está en otro lugar, en Maps haz clic derecho sobre él, copia las coordenadas y pégalas en el formulario.</li>
+      <li>Toma una captura y pégala en el formulario con <b>Ctrl + V</b>, o arrastra el archivo. El formulario lo guarda automáticamente con el código del punto.</li>
+      <li>Si tienes una duda, escríbela en <b>Observaciones o dudas</b> del mismo punto. Las respuestas aparecen ahí.</li>
+    </ol>
+  </details>
+
+  <section class="rango" id="rango" aria-labelledby="rango-t">
+    <h2 id="rango-t">Mi rango de puntos</h2>
+    <p class="hint">Hay <span id="totalpts"></span> puntos numerados. Escribe el primero y el último de tu rango.</p>
+    <form class="rrow" id="frango" novalidate>
+      <div><label class="lbl-s" for="desde">Desde N°</label><input id="desde" type="number" inputmode="numeric" min="1"></div>
+      <div><label class="lbl-s" for="hasta">Hasta N°</label><input id="hasta" type="number" inputmode="numeric" min="1"></div>
+      <button class="btn primary" type="submit">Ver mis puntos</button>
+      <button class="btn" type="button" id="todos">Ver todos</button>
+    </form>
+    <div class="rmsg" id="rmsg" aria-live="polite"></div>
+    <div class="progress">
+      <div class="bar" aria-hidden="true"><i id="barfill"></i></div>
+      <span id="proglabel" aria-live="polite"></span>
+    </div>
+  </section>
+</div></header>
+
+<main class="wrap" id="lista">
+  <div class="bar2">
+    <div class="f"><label class="lbl-s" for="fmun">Municipio</label><select id="fmun"></select></div>
+    <div class="f"><label class="lbl-s" for="q">Buscar</label><input id="q" type="search" placeholder="Código, dirección o palabra de la descripción" autocomplete="off"></div>
+  </div>
+  <div class="bar2" style="padding-top:4px">
+    <div class="seg" role="group" aria-label="Estado">
+      <button type="button" data-est="pend" aria-pressed="true">Pendientes</button>
+      <button type="button" data-est="hecho" aria-pressed="false">Hechos</button>
+      <button type="button" data-est="dudas" aria-pressed="false" id="segdudas">Con dudas</button>
+      <button type="button" data-est="todos" aria-pressed="false">Todos</button>
+    </div>
+    <span class="count" id="count" aria-live="polite"></span>
+  </div>
+  <div id="lista-puntos"></div>
+  <nav class="pager" aria-label="Paginación">
+    <button type="button" id="prev">← Anterior</button>
+    <span id="pageinfo"></span>
+    <button type="button" id="next">Siguiente →</button>
+  </nav>
+</main>
+
+<footer class="wrap">
+  <p><b>Sobre los datos.</b> Los puntos provienen del registro no oficial mapadelterremoto.com. Sus coordenadas no son mediciones en campo: se obtuvieron a partir del texto de cada reporte, por eso hay que verificar siempre el edificio.</p>
+</footer>
+
+<div id="panel" hidden>
+  <div class="scrim" data-cerrar="1"></div>
+  <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="ptitulo">
+    <div class="dhead">
+      <div class="t"><b id="ptitulo"></b><p id="psub"></p></div>
+      <a class="btn ext" id="pmaps" target="_blank" rel="noopener">Google Maps</a>
+      <a class="btn ext" id="pficha" target="_blank" rel="noopener">Página original</a>
+      <button class="btn close" type="button" data-cerrar="1" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="dbody" id="pbody"></div>
+    <div class="dfoot">
+      <button class="btn primary" type="button" id="pguardar">Guardar aporte</button>
+      <button class="btn" type="button" data-cerrar="1">Volver a la lista</button>
+      <button class="btn danger" type="button" id="pborrar">Borrar aporte</button>
+      <div class="estado" id="pestado" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<script src="datos.js"></script>
+<script>
+(function(){
+  "use strict";
+  // === CONFIGURACION ============================================
+  // URL de la aplicacion web de Google Apps Script (termina en /exec).
+  // Vacia = modo prototipo: todo se guarda solo en este navegador.
+  var API_URL = "https://script.google.com/macros/s/AKfycbyqOFtJcj_KWwJ1yoPUhFhG9r-cKz1F5tvHb43e8Gw5EQb8FKRkz_lUJ4EWk6lLTmHh/exec";
+  // ==============================================================
+
+  var PAGE = 25, MAX_FOTOS = 3, MAX_LADO = 1600;
+  var puntos = window.PUNTOS || [], N = puntos.length;
+  var DEMO = !API_URL;
+  var $ = function(id){ return document.getElementById(id); };
+  var porCodigo = {}; puntos.forEach(function(p){ porCodigo[p.codigo] = p; });
+
+  // ---------- almacenamiento local (rango, clave, datos del prototipo) ----------
+  var mem = {};
+  function leer(k, def){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? def : v; } catch(e){ return k in mem ? mem[k] : def; } }
+  function grabar(k, v){ mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function fold(s){ return (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(); }
+  function fechaCorta(iso){ try { return new Date(iso).toLocaleString("es-PE",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); } catch(e){ return iso; } }
+  function nombreFoto(cod, i){ return cod + (i ? "_" + (i+1) : "") + ".jpg"; }
+  function toast(t){
+    var el = document.createElement("div"); el.className = "toast"; el.setAttribute("role","status"); el.textContent = t;
+    document.body.appendChild(el); setTimeout(function(){ el.remove(); }, 2800);
+  }
+
+  // ---------- API: remota (Apps Script) o local (prototipo) ----------
+  function clave(){ return leer("conteo_clave", ""); }
+  function pedirClave(){
+    var k = window.prompt("Escribe la clave del equipo (te la da quien coordina):", "");
+    if (k == null) return false; grabar("conteo_clave", k.trim()); return true;
+  }
+  function llamar(metodo, datos, reintento){
+    var p;
+    if (metodo === "GET"){
+      var qs = Object.keys(datos).map(function(k){ return k+"="+encodeURIComponent(datos[k]); }).join("&");
+      p = fetch(API_URL + "?" + qs + "&clave=" + encodeURIComponent(clave()));
+    } else {
+      datos.clave = clave();
+      p = fetch(API_URL, { method:"POST", body: JSON.stringify(datos) }); // text/plain: sin preflight CORS
+    }
+    return p.then(function(r){ return r.json(); }).then(function(j){
+      if (j && j.error === "clave" && !reintento && pedirClave()) return llamar(metodo, datos, true);
+      if (!j || j.error) throw new Error((j && j.mensaje) || (j && j.error) || "Respuesta vacía");
+      return j;
+    });
+  }
+  var remota = {
+    resumen: function(){ return llamar("GET", {accion:"resumen"}); },
+    punto: function(c){ return llamar("GET", {accion:"punto", codigo:c}); },
+    guardar: function(d){ d.accion = "guardar"; return llamar("POST", d); },
+    mensaje: function(d){ d.accion = "mensaje"; return llamar("POST", d); },
+    borrarAporte: function(c){ return llamar("POST", {accion:"borrar_aporte", codigo:c}); },
+    borrarMensaje: function(id){ return llamar("POST", {accion:"borrar_mensaje", id:id}); }
+  };
+  var DKEY = "conteo_demo_v1";
+  function demoDB(){ return leer(DKEY, {aportes:{}, mensajes:[]}); }
+  var demoFotos = {}; // en memoria: las imagenes no caben bien en localStorage
+  var local = {
+    resumen: function(){
+      var db = demoDB(), hechos = {}, dudas = {};
+      Object.keys(db.aportes).forEach(function(c){ hechos[c] = db.aportes[c].fecha; });
+      contarDudas(db.mensajes, dudas);
+      return Promise.resolve({hechos:hechos, dudas:dudas});
+    },
+    punto: function(c){
+      var db = demoDB(), a = db.aportes[c] || null;
+      var fotos = (demoFotos[c] || []).map(function(f){ return {nombre:f.nombre, thumb:f.dataUrl}; });
+      if (a && !fotos.length && a.fotos) fotos = a.fotos.split(", ").filter(Boolean).map(function(n){ return {nombre:n, thumb:null}; });
+      return Promise.resolve({aporte:a, fotos:fotos, mensajes: db.mensajes.filter(function(m){ return m.codigo === c; })});
+    },
+    guardar: function(d){
+      var db = demoDB(), viejas = demoFotos[d.codigo] || [], nuevas = [];
+      d.fotos.forEach(function(f, i){
+        var nom = nombreFoto(d.codigo, i);
+        if (f.base64) nuevas.push({nombre:nom, dataUrl:"data:image/jpeg;base64,"+f.base64});
+        else { var v = viejas.filter(function(x){ return x.nombre === f.mantener; })[0]; nuevas.push({nombre:nom, dataUrl: v ? v.dataUrl : null}); }
+      });
+      demoFotos[d.codigo] = nuevas;
+      var a = Object.assign({}, d.campos, {codigo:d.codigo, fecha:new Date().toISOString(), fotos: nuevas.map(function(f){ return f.nombre; }).join(", ")});
+      db.aportes[d.codigo] = a; grabar(DKEY, db);
+      return Promise.resolve({ok:true, aporte:a});
+    },
+    mensaje: function(d){
+      var db = demoDB();
+      var m = {id: "m"+Date.now()+Math.random().toString(36).slice(2,6), codigo:d.codigo, fecha:new Date().toISOString(), texto:d.texto, responde_a:d.responde_a || ""};
+      db.mensajes.push(m); grabar(DKEY, db);
+      return Promise.resolve({ok:true, mensaje:m});
+    },
+    borrarAporte: function(c){
+      var db = demoDB(); delete db.aportes[c]; grabar(DKEY, db); delete demoFotos[c];
+      return Promise.resolve({ok:true});
+    },
+    borrarMensaje: function(id){
+      var db = demoDB(); db.mensajes = db.mensajes.filter(function(m){ return m.id !== id && m.responde_a !== id; }); grabar(DKEY, db);
+      return Promise.resolve({ok:true});
+    }
+  };
+  function contarDudas(mensajes, out){
+    var conResp = {}; mensajes.forEach(function(m){ if (m.responde_a) conResp[m.responde_a] = true; });
+    mensajes.forEach(function(m){ if (!m.responde_a && !conResp[m.id]) out[m.codigo] = (out[m.codigo]||0) + 1; });
+    return out;
+  }
+  var api = DEMO ? local : remota;
+  // ids de los mensajes escritos desde este navegador: solo esos se pueden eliminar aqui
+  var misMsgs = leer("conteo_mis_mensajes", {});
+  function esMio(id){ return !!misMsgs[id]; }
+
+  // ---------- estado de la lista ----------
+  var hechos = {}, dudas = {};
+  var rango = leer("conteo_rango_v1", null);
+  var est = { q:"", mun:"", est:"pend", page:1 };
+  var lista = [];
+
+  if (DEMO) $("aviso").hidden = false;
+  $("totalpts").textContent = N;
+  $("desde").max = N; $("hasta").max = N;
+  puntos.forEach(function(p){ p._b = fold(p.codigo+" "+p.direccion+" "+(p.ubicacion||"")+" "+p.descripcion); });
+
+  (function(){
+    var m = {}; puntos.forEach(function(p){ m[p.municipio] = (m[p.municipio]||0)+1; });
+    $("fmun").innerHTML = '<option value="">Todos</option>' + Object.keys(m).sort(function(a,b){ return a.localeCompare(b,"es"); })
+      .map(function(k){ return '<option value="'+esc(k)+'">'+esc(k)+' ('+m[k]+')</option>'; }).join("");
+  })();
+
+  function refrescarResumen(){
+    return api.resumen().then(function(r){
+      hechos = r.hechos || {}; dudas = r.dudas || {};
+      $("errconn").hidden = true; pintar();
+    }).catch(function(e){
+      $("errconn").hidden = false;
+      $("errconn").textContent = "No se pudo cargar el avance del equipo (" + e.message + "). Revisa tu conexión y recarga la página.";
+      pintar();
+    });
+  }
+
+  function aplicarRango(d, h, silencioso){
+    var msg = $("rmsg");
+    if (!d || !h || d < 1 || h < 1 || d > N || h > N){ msg.textContent = "Escribe números entre 1 y " + N + "."; msg.className = "rmsg err"; return; }
+    if (d > h){ var t = d; d = h; h = t; }
+    rango = {d:d, h:h}; grabar("conteo_rango_v1", rango);
+    $("desde").value = d; $("hasta").value = h;
+    msg.className = "rmsg"; msg.textContent = "Mostrando tu rango: N° " + d + " al " + h + " (" + (h-d+1) + " puntos).";
+    est.page = 1; pintar();
+    if (!silencioso) $("lista").scrollIntoView({behavior:"smooth", block:"start"});
+  }
+  $("frango").addEventListener("submit", function(e){ e.preventDefault(); aplicarRango(parseInt($("desde").value,10), parseInt($("hasta").value,10)); });
+  $("todos").addEventListener("click", function(){
+    rango = null; grabar("conteo_rango_v1", null); $("desde").value = ""; $("hasta").value = "";
+    $("rmsg").className = "rmsg"; $("rmsg").textContent = "Mostrando los " + N + " puntos."; est.page = 1; pintar();
+  });
+
+  function enRango(p){ return !rango || (p.n >= rango.d && p.n <= rango.h); }
+  function filtrar(){
+    var q = fold(est.q.trim());
+    lista = puntos.filter(function(p){
+      if (!enRango(p)) return false;
+      if (est.mun && p.municipio !== est.mun) return false;
+      var h = !!hechos[p.codigo];
+      if (est.est === "pend" && h) return false;
+      if (est.est === "hecho" && !h) return false;
+      if (est.est === "dudas" && !dudas[p.codigo]) return false;
+      return !q || p._b.indexOf(q) !== -1;
+    });
+    var maxP = Math.max(1, Math.ceil(lista.length/PAGE)); if (est.page > maxP) est.page = maxP;
+  }
+  function urlMaps(lat, lon){ return "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon; }
+  function urlFicha(p){ return "https://www.mapadelterremoto.com/mapa?punto=" + encodeURIComponent(p.codigo); }
+  function ubiTxt(p){ return p.ubicacion || [p.direccion, p.municipio].filter(Boolean).join(", ") || "Sin ubicación en el reporte"; }
+  function coordTxt(p){ return p.lat.toFixed(6) + ", " + p.lon.toFixed(6); }
+  function tarjeta(p){
+    var h = !!hechos[p.codigo], nd = dudas[p.codigo] || 0;
+    return '<article class="card'+(h?' done':'')+'" data-cod="'+esc(p.codigo)+'">'+
+      '<div>'+
+        '<div class="cardhead">'+
+          '<span class="num">N° '+p.n+'</span><span class="code">'+esc(p.codigo)+'</span>'+
+          '<span class="chip'+(p.tipo==="geotecnico"?' geo':'')+'">'+esc(p.categoria)+'</span>'+
+          (h ? '<span class="chip ok">✓ Hecho</span>' : '')+
+          (nd ? '<span class="chip duda">'+nd+(nd===1?' duda sin responder':' dudas sin responder')+'</span>' : '')+
+        '</div>'+
+        '<span class="ubi-l">Ubicación según la página</span>'+
+        '<p class="dir">'+esc(ubiTxt(p))+'</p>'+
+        (p.descripcion ? '<p class="desc'+(p.descripcion.length > 200 ? ' clamp' : '')+'">'+esc(p.descripcion)+'</p>' : '')+
+        (p.descripcion && p.descripcion.length > 200 ? '<button type="button" class="more" data-more="1" aria-expanded="false">Ver más</button>' : '')+
+        '<p class="coord"><span>'+coordTxt(p)+'</span><button type="button" class="copy" data-copy="'+coordTxt(p)+'">Copiar</button></p>'+
+      '</div>'+
+      '<div class="actions">'+
+        '<a class="btn ext" href="'+urlMaps(p.lat,p.lon)+'" target="_blank" rel="noopener">Abrir en Google Maps</a>'+
+        '<a class="btn ext" href="'+urlFicha(p)+'" target="_blank" rel="noopener">Ver en la página original</a>'+
+        '<button type="button" class="btn '+(h?'done':'primary')+'" data-reg="1">'+(h?'Ver o corregir aporte':'Registrar aporte')+'</button>'+
+      '</div>'+
+    '</article>';
+  }
+  function pintar(){
+    filtrar();
+    var ini = (est.page-1)*PAGE, trozo = lista.slice(ini, ini+PAGE);
+    $("lista-puntos").innerHTML = trozo.length ? trozo.map(tarjeta).join("") : '<div class="empty">No hay puntos aquí.</div>';
+    var tot = Math.max(1, Math.ceil(lista.length/PAGE));
+    $("pageinfo").textContent = "Página "+est.page+" de "+tot;
+    $("prev").disabled = est.page <= 1; $("next").disabled = est.page >= tot;
+    $("count").textContent = lista.length + (lista.length===1?" punto":" puntos");
+    var base = puntos.filter(enRango), n = base.filter(function(p){ return hechos[p.codigo]; }).length;
+    var pct = base.length ? Math.round(n/base.length*100) : 0;
+    $("barfill").style.width = pct+"%";
+    $("proglabel").textContent = n+" de "+base.length+" hechos ("+pct+"%)" + (rango ? " en tu rango" : "");
+    var totD = Object.keys(dudas).filter(function(c){ return porCodigo[c] && enRango(porCodigo[c]); }).length;
+    $("segdudas").textContent = "Con dudas" + (totD ? " (" + totD + ")" : "");
+    document.querySelectorAll(".seg button").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-est")===est.est)); });
+  }
+  $("q").addEventListener("input", function(e){ est.q = e.target.value; est.page = 1; pintar(); });
+  $("fmun").addEventListener("change", function(e){ est.mun = e.target.value; est.page = 1; pintar(); });
+  document.querySelector(".seg").addEventListener("click", function(e){ var b = e.target.closest("button"); if (!b) return; est.est = b.getAttribute("data-est"); est.page = 1; pintar(); });
+  $("prev").addEventListener("click", function(){ est.page--; pintar(); $("lista").scrollIntoView(); });
+  $("next").addEventListener("click", function(){ est.page++; pintar(); $("lista").scrollIntoView(); });
+  function copiar(txt){
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function(){ toast("Coordenadas copiadas: " + txt); })
+      .catch(function(){ window.prompt("Copia las coordenadas:", txt); });
+  }
+  $("lista-puntos").addEventListener("click", function(e){
+    var c = e.target.closest("[data-copy]"); if (c){ copiar(c.getAttribute("data-copy")); return; }
+    var mo = e.target.closest("[data-more]");
+    if (mo){ var d = mo.parentNode.querySelector(".desc"), ab = !d.classList.contains("clamp"); d.classList.toggle("clamp", ab); mo.textContent = ab ? "Ver más" : "Ver menos"; mo.setAttribute("aria-expanded", String(!ab)); return; }
+    var b = e.target.closest("[data-reg]"); if (!b) return;
+    abrir(porCodigo[b.closest(".card").getAttribute("data-cod")], b);
+  });
+
+  // ---------- panel del aporte ----------
+  var actual = null, ultimoFoco = null, fotos = [], sucio = false, guardando = false, tieneAporte = false;
+  var OPC = {
+    encontro: [["si","Sí"],["dudoso","Dudoso / no estoy seguro"],["no","No"]],
+    motivo_no: [["no_ubicable","No se puede identificar el edificio"],["direccion_insuficiente","La dirección no alcanza"],["sin_cobertura","Sin cobertura de Street View"],["demolido","El edificio ya no existe (colapsado o demolido)"],["duplicado","Parece duplicado de otro punto"],["otro","Otro (explícalo en observaciones o dudas)"]],
+    sv_estado: [["si","Sí"],["tapada","Vista tapada o no se identifica"],["sin_cobertura","Sin cobertura"]],
+    si_no_ns: [["si","Sí"],["no","No"],["no_se","No se puede ver"]],
+    material: [["concreto","Concreto reforzado (pórticos)"],["mamp_confinada","Mampostería confinada"],["mamp_simple","Mampostería simple o sin confinar"],["adobe","Adobe o tapia"],["madera","Madera o bahareque"],["metalica","Estructura metálica"],["mixto","Mixto"],["no_se","No se distingue"]],
+    indicios: [["inclinacion","Edificio o poste inclinado"],["asentamiento","Asentamiento o hundimiento del terreno"],["grietas","Grietas en el terreno o el pavimento"],["arena","Arena expulsada (licuefacción)"],["talud","Talud o ladera inestable cercana"],["ninguno","Ninguno visible"],["no_se","No se puede apreciar"]],
+    tipo_falla: [["deslizamiento","Deslizamiento o derrumbe de talud"],["asentamiento","Asentamiento o hundimiento"],["grieta","Grieta en la calzada o el terreno"],["puente","Daño en puente o estribo"],["contencion","Falla de muro u obra de contención"],["licuefaccion","Licuefacción"],["otro","Otro"]],
+    afecta_via: [["total","Cierra la vía totalmente"],["parcial","Paso parcial"],["no","No afecta el paso"],["no_se","No se sabe"]],
+    ubicacion: [["confirmado","Confirmado"],["no_confirmado","No confirmado"]]
+  };
+  function radios(name, ops, row){
+    return '<div class="opts'+(row?' row':'')+'" role="radiogroup">'+ops.map(function(o){
+      return '<label><input type="radio" name="'+name+'" value="'+o[0]+'"> '+esc(o[1])+'</label>'; }).join("")+'</div>';
+  }
+  function checks(name, ops){
+    return '<div class="opts">'+ops.map(function(o){ return '<label><input type="checkbox" name="'+name+'" value="'+o[0]+'"> '+esc(o[1])+'</label>'; }).join("")+'</div>';
+  }
+  function select(id, ops){ return '<select id="'+id+'" name="'+id+'"><option value="">Elige…</option>'+ops.map(function(o){ return '<option value="'+o[0]+'">'+esc(o[1])+'</option>'; }).join("")+'</select>'; }
+  function q(nombre, inner, extra){ return '<div class="q" data-q="'+nombre+'"'+(extra||"")+'>'+inner+'</div>'; }
+
+  function formHTML(p){
+    var edif = p.tipo === "edificacion";
+    return '<details class="reporte" open><summary>Datos del reporte</summary><div class="cont">'+
+        '<p><b>Ubicación según la página:</b> '+esc(ubiTxt(p))+'</p>'+
+        (p.descripcion ? '<p><b>Descripción:</b> '+esc(p.descripcion)+'</p>' : '')+
+        '<p><b>Coordenadas registradas:</b> '+coordTxt(p)+'</p>'+
+      '</div></details>'+
+      '<form id="faporte" novalidate autocomplete="off">'+
+      '<h2 class="sec-t">Aporte</h2>'+
+      q("encontro", '<span class="lbl">¿Encontraste el edificio (o el lugar) de este punto?</span>'+radios("encontro", OPC.encontro))+
+      q("motivo_no", '<span class="lbl">¿Por qué no se pudo?</span>'+radios("motivo_no", OPC.motivo_no), ' data-si="no"')+
+      q("coords", '<label class="lbl" for="coords">Coordenadas del edificio</label>'+
+        '<span class="h">Viene la coordenada registrada. Si el edificio está en otro lugar, en Google Maps haz clic derecho sobre él, copia las coordenadas y pégalas aquí.</span>'+
+        '<div class="inl"><input id="coords" name="coords" type="text" inputmode="decimal" placeholder="4.535782, -75.672614"><button type="button" class="btn sm" id="pegarc">Pegar</button></div>', ' data-nono="1"')+
+      q("sv_estado", '<span class="lbl">Street View en ese lugar</span>'+radios("sv_estado", OPC.sv_estado))+
+      '<div>'+
+        q("fotos", '<span class="lbl">Captura de Street View</span>'+
+          '<span class="h">Pega con <b>Ctrl + V</b>, arrastra el archivo aquí o haz clic para elegirlo. Hasta '+MAX_FOTOS+' imágenes. Obligatoria si hay Street View.</span>'+
+          '<div class="drop" id="drop" tabindex="0" role="button" aria-label="Agregar captura: pegar, arrastrar o elegir archivo"><b>Ctrl + V</b> para pegar · o arrastra la imagen aquí · o haz clic</div>'+
+          '<input type="file" id="ffile" accept="image/*" multiple hidden>'+
+          '<div class="thumbs" id="thumbs"></div>'+
+          '<span class="fhint">'+(DEMO ? 'En este prototipo las imágenes quedan solo en tu navegador.' :
+            'Al guardar, se suben a la carpeta de Google Drive del proyecto («Conteo de pisos - fotos») con el nombre que ves en cada miniatura.')+'</span>')+
+      '</div>'+
+      '<div data-sv="si">'+
+        q("sv_fecha", '<label class="lbl" for="sv_fecha">Fecha de la imagen (AAAA-MM)</label><span class="h">Aparece en el pie de la vista de Street View.</span><input id="sv_fecha" name="sv_fecha" type="text" placeholder="2023-04" maxlength="7">')+
+        q("sv_enlace", '<label class="lbl" for="sv_enlace">Enlace de Street View</label><span class="h">Copia la dirección de la barra del navegador mientras estás en la vista.</span><input id="sv_enlace" name="sv_enlace" type="url" placeholder="https://www.google.com/maps/@…">')+
+      '</div>'+
+      q("pisos", '<label class="lbl" for="pisos">Número de pisos sobre el nivel de la calle</label>'+
+        '<span class="h">Planta baja = 1. No cuentan tanques, cuartos de máquinas ni campanarios. '+
+        '<b>Déjalo en blanco</b> si no se puede determinar'+(edif ? '' : ' o si es una vía, puente o deslizamiento')+'.</span>'+
+        '<input id="pisos" name="pisos" type="number" min="1" max="80" step="1" inputmode="numeric" placeholder="En blanco = no se puede determinar">', ' data-nono="1"')+
+      (edif ?
+      '<div class="grp" data-grupo="edif"><h3>Edificio</h3>'+
+        q("sotano", '<span class="lbl">¿Se ve sótano o semisótano?</span>'+radios("sotano", OPC.si_no_ns, true))+
+        q("altillo", '<span class="lbl">¿Altillo, mezanine o piso en la azotea?</span>'+radios("altillo", OPC.si_no_ns, true))+
+        q("material", '<label class="lbl" for="material">Material aparente</label>'+select("material", OPC.material))+
+        q("indicios", '<span class="lbl">¿Indicios geotécnicos o de asentamiento?</span><span class="h">Elige todos los que veas.</span>'+checks("indicios", OPC.indicios))+
+      '</div>' :
+      '<div class="grp" data-grupo="geo"><h3>Falla geotécnica</h3>'+
+        q("tipo_falla", '<label class="lbl" for="tipo_falla">Tipo de falla</label>'+select("tipo_falla", OPC.tipo_falla))+
+        q("afecta_via", '<span class="lbl">¿Afecta el paso por la vía?</span>'+radios("afecta_via", OPC.afecta_via))+
+        q("extension_m", '<label class="lbl" for="extension_m">Extensión aproximada (metros, opcional)</label><input id="extension_m" name="extension_m" type="number" min="0" inputmode="numeric">')+
+      '</div>')+
+      q("ubicacion", '<span class="lbl">Ubicación</span><span class="h">¿Confirmaste que este es el edificio o lugar del reporte?</span>'+radios("ubicacion", OPC.ubicacion, true), ' data-nono="1"')+
+    '</form>'+
+    '<section class="foro" aria-labelledby="foro-t">'+
+      '<h2 class="sec-t" id="foro-t">Observaciones o dudas</h2>'+
+      '<div id="hilos"><p class="vacio">Cargando…</p></div>'+
+      '<div class="nuevo"><label class="lbl-s" for="nuevomsg">Nueva observación o duda</label>'+
+        '<textarea id="nuevomsg" maxlength="2000" placeholder="Escribe aquí. Se publica de inmediato, aparte del aporte."></textarea>'+
+        '<div class="inl"><button type="button" class="btn sm primary" id="publicar">Publicar</button></div></div>'+
+    '</section>';
+  }
+
+  function valRadio(f, n){ var x = f.querySelector('input[name="'+n+'"]:checked'); return x ? x.value : ""; }
+  function setRadio(f, n, v){ var x = f.querySelector('input[name="'+n+'"][value="'+v+'"]'); if (x) x.checked = true; }
+
+  function visibilidad(){
+    var f = $("faporte"); if (!f) return;
+    var enc = valRadio(f, "encontro"), sv = valRadio(f, "sv_estado");
+    f.querySelectorAll('[data-si="no"]').forEach(function(el){ el.hidden = enc !== "no"; });
+    f.querySelectorAll('[data-nono]').forEach(function(el){ el.hidden = enc === "no"; });
+    f.querySelectorAll('[data-sv="si"]').forEach(function(el){ el.hidden = sv !== "si"; });
+    var g = f.querySelector("[data-grupo]");
+    if (g) g.hidden = enc === "no" || (g.getAttribute("data-grupo") === "edif" && sv !== "si");
+  }
+
+  function parseCoords(t){
+    var m = String(t||"").trim().match(/^\(?\s*(-?\d{1,2}(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:[.,]\d+)?)\s*\)?$/);
+    if (!m) return null;
+    var lat = parseFloat(m[1].replace(",", ".")), lon = parseFloat(m[2].replace(",", "."));
+    if (!(lat >= -5 && lat <= 14 && lon >= -82 && lon <= -66)) return null;
+    return {lat:+lat.toFixed(7), lon:+lon.toFixed(7)};
+  }
+
+  function abrir(p, origen){
+    actual = p; ultimoFoco = origen || null; fotos = []; sucio = false; tieneAporte = false;
+    $("ptitulo").textContent = "N° "+p.n+" · "+p.codigo+" · "+p.categoria;
+    $("psub").textContent = ubiTxt(p);
+    $("pmaps").href = urlMaps(p.lat, p.lon);
+    $("pficha").href = urlFicha(p);
+    $("pbody").innerHTML = formHTML(p);
+    $("coords").value = coordTxt(p);
+    $("pestado").textContent = "Cargando…"; $("pestado").className = "estado";
+    $("pguardar").disabled = true;
+    visibilidad(); pintarFotos();
+    $("panel").hidden = false; document.body.classList.add("lock");
+    setTimeout(function(){ $("panel").querySelector(".close").focus(); }, 0);
+    var cod = p.codigo;
+    api.punto(cod).then(function(r){
+      if (!actual || actual.codigo !== cod) return;
+      if (r.aporte) cargarAporte(r.aporte);
+      tieneAporte = !!r.aporte;
+      fotos = (r.fotos || []).map(function(f){ return {tipo:"guardada", nombre:f.nombre, src:f.thumb}; });
+      pintarFotos(); pintarHilos(r.mensajes || []);
+      $("pestado").textContent = r.aporte ? "Aporte guardado el " + fechaCorta(r.aporte.fecha) + ". Puedes corregirlo y volver a guardar." : "";
+      $("pguardar").disabled = false; $("pguardar").textContent = r.aporte ? "Guardar cambios" : "Guardar aporte";
+      sucio = false;
+    }).catch(function(e){
+      $("pestado").textContent = "No se pudo cargar este punto: " + e.message; $("pestado").className = "estado err";
+      $("pguardar").disabled = false; pintarHilos([]);
+    });
+  }
+  function cargarAporte(a){
+    var f = $("faporte");
+    ["encontro","motivo_no","sv_estado","sotano","altillo","afecta_via","ubicacion"].forEach(function(n){ if (a[n]) setRadio(f, n, a[n]); });
+    ["sv_fecha","sv_enlace","pisos","material","tipo_falla","extension_m"].forEach(function(n){ var el = f.elements[n]; if (el && a[n] != null && a[n] !== "") el.value = a[n]; });
+    if (a.lat !== "" && a.lat != null && a.lon !== "" && a.lon != null) $("coords").value = a.lat + ", " + a.lon;
+    String(a.indicios || "").split(/;\s*/).forEach(function(v){ var x = f.querySelector('input[name="indicios"][value="'+v+'"]'); if (x) x.checked = true; });
+    visibilidad();
+  }
+  function cerrar(){
+    if (guardando) return;
+    if (sucio && !confirm("Tienes cambios sin guardar en este punto. ¿Cerrar de todos modos?")) return;
+    $("panel").hidden = true; document.body.classList.remove("lock");
+    $("pbody").innerHTML = ""; actual = null; fotos = [];
+    if (ultimoFoco && document.body.contains(ultimoFoco)) ultimoFoco.focus();
+    refrescarResumen();
+  }
+  $("panel").addEventListener("click", function(e){ if (e.target.closest("[data-cerrar]")) cerrar(); });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape" && !$("panel").hidden) cerrar(); });
+
+  // cambios en el formulario
+  $("pbody").addEventListener("change", function(e){
+    if (!e.target.closest("#faporte")) return;
+    sucio = true;
+    var t = e.target;
+    if (t.name === "indicios" && t.checked && (t.value === "ninguno" || t.value === "no_se")){
+      document.querySelectorAll('input[name="indicios"]').forEach(function(x){ if (x !== t) x.checked = false; });
+    } else if (t.name === "indicios" && t.checked){
+      document.querySelectorAll('input[name="indicios"][value="ninguno"],input[name="indicios"][value="no_se"]').forEach(function(x){ x.checked = false; });
+    }
+    var qd = t.closest(".q"); if (qd) limpiarError(qd);
+    visibilidad();
+  });
+  $("pbody").addEventListener("input", function(e){ if (e.target.closest("#faporte")) { sucio = true; var qd = e.target.closest(".q"); if (qd) limpiarError(qd); } });
+
+  // pegar coordenadas
+  $("pbody").addEventListener("click", function(e){
+    if (e.target.id === "pegarc"){
+      (navigator.clipboard && navigator.clipboard.readText ? navigator.clipboard.readText() : Promise.reject())
+        .then(function(t){ var c = parseCoords(t); if (c){ $("coords").value = c.lat + ", " + c.lon; sucio = true; limpiarError($("coords").closest(".q")); } else toast("En el portapapeles no hay coordenadas válidas"); })
+        .catch(function(){ toast("Pega con Ctrl + V dentro del campo"); $("coords").focus(); });
+    }
+    if (e.target.id === "drop") $("ffile").click();
+    var rm = e.target.closest("[data-quitar]");
+    if (rm){ fotos.splice(+rm.getAttribute("data-quitar"), 1); sucio = true; pintarFotos(); }
+    if (e.target.id === "publicar") publicar(null);
+    var rb = e.target.closest("[data-responder]");
+    if (rb){ var box = rb.parentNode.parentNode.querySelector(".rbox"); box.hidden = !box.hidden; if (!box.hidden) box.querySelector("textarea").focus(); }
+    var env = e.target.closest("[data-enviar]");
+    if (env) publicar(env.getAttribute("data-enviar"), env.closest(".rbox").querySelector("textarea"));
+  });
+  $("pbody").addEventListener("keydown", function(e){ if (e.target.id === "drop" && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); $("ffile").click(); } });
+  $("pbody").addEventListener("change", function(e){ if (e.target.id === "ffile"){ agregarArchivos(e.target.files); e.target.value = ""; } });
+
+  // ---------- fotos: Ctrl+V, arrastrar, elegir ----------
+  function agregarArchivos(lista){
+    var imgs = Array.prototype.filter.call(lista || [], function(f){ return /^image\//.test(f.type); });
+    if (!imgs.length){ toast("Solo se aceptan imágenes"); return; }
+    var libres = MAX_FOTOS - fotos.length;
+    if (libres <= 0){ toast("Máximo " + MAX_FOTOS + " imágenes. Quita una para agregar otra."); return; }
+    if (imgs.length > libres) toast("Solo se agregaron " + libres + " (máximo " + MAX_FOTOS + ").");
+    imgs.slice(0, libres).forEach(function(file){
+      var slot = {tipo:"nueva", src:null, base64:null, cargando:true};
+      fotos.push(slot); pintarFotos();
+      reducir(file).then(function(dataUrl){
+        slot.src = dataUrl; slot.base64 = dataUrl.split(",")[1]; slot.cargando = false; sucio = true; pintarFotos();
+        var qd = document.querySelector('[data-q="fotos"]'); if (qd) limpiarError(qd);
+      }).catch(function(){ fotos.splice(fotos.indexOf(slot), 1); pintarFotos(); toast("No se pudo leer la imagen"); });
+    });
+  }
+  function reducir(file){
+    return new Promise(function(res, rej){
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function(){
+        var s = Math.min(1, MAX_LADO / Math.max(img.naturalWidth, img.naturalHeight));
+        var c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth*s); c.height = Math.round(img.naturalHeight*s);
+        var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); rej(); };
+      img.src = url;
+    });
+  }
+  function pintarFotos(){
+    var box = $("thumbs"); if (!box || !actual) return;
+    box.innerHTML = fotos.map(function(f, i){
+      var nom = nombreFoto(actual.codigo, i);
+      var vis = f.cargando ? '<div class="noimg">Procesando…</div>' :
+        (f.src ? '<img src="'+f.src+'" alt="Captura '+(i+1)+' del punto '+esc(actual.codigo)+'">' : '<div class="noimg">Guardada<br>'+esc(f.nombre)+'</div>');
+      return '<div class="th">'+vis+'<div class="meta"><span title="Nombre con el que se guarda">'+esc(nom)+'</span><button type="button" data-quitar="'+i+'" aria-label="Quitar '+esc(nom)+'">Quitar</button></div></div>';
+    }).join("");
+  }
+  document.addEventListener("paste", function(e){
+    if ($("panel").hidden || !$("faporte")) return;
+    var items = (e.clipboardData && e.clipboardData.items) || [], files = [];
+    for (var i = 0; i < items.length; i++){ if (items[i].kind === "file" && /^image\//.test(items[i].type)) files.push(items[i].getAsFile()); }
+    if (files.length){
+      e.preventDefault();
+      agregarArchivos(files);
+      return;
+    }
+    // pegar "lat, lon" en el campo de coordenadas aunque venga con parentesis o espacios
+    if (e.target && e.target.id === "coords"){
+      var t = e.clipboardData.getData("text"), c = parseCoords(t);
+      if (c){ e.preventDefault(); e.target.value = c.lat + ", " + c.lon; sucio = true; limpiarError(e.target.closest(".q")); }
+    }
+  });
+  (function(){
+    var dr = document.querySelector(".drawer"), cnt = 0;
+    function tieneArchivos(e){ return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") !== -1; }
+    dr.addEventListener("dragenter", function(e){ if (!tieneArchivos(e)) return; e.preventDefault(); cnt++; dr.classList.add("over"); });
+    dr.addEventListener("dragover", function(e){ if (!tieneArchivos(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+    dr.addEventListener("dragleave", function(){ cnt = Math.max(0, cnt-1); if (!cnt) dr.classList.remove("over"); });
+    dr.addEventListener("drop", function(e){
+      if (!tieneArchivos(e)) return; e.preventDefault(); cnt = 0; dr.classList.remove("over");
+      agregarArchivos(e.dataTransfer.files);
+    });
+  })();
+
+  // ---------- validar y guardar ----------
+  function marcarError(qd, txt){
+    if (!qd) return; qd.classList.add("inv");
+    var m = qd.querySelector(".msg"); if (!m){ m = document.createElement("span"); m.className = "msg"; qd.appendChild(m); }
+    m.textContent = txt;
+  }
+  function limpiarError(qd){ if (!qd) return; qd.classList.remove("inv"); var m = qd.querySelector(".msg"); if (m) m.remove(); }
+  function validar(){
+    var f = $("faporte"), errs = [];
+    f.querySelectorAll(".q.inv").forEach(limpiarError);
+    function vis(n){ var qd = f.querySelector('[data-q="'+n+'"]'); return qd && !qd.closest("[hidden]") && !qd.hidden ? qd : null; }
+    function req(n, ok, txt){ var qd = vis(n); if (qd && !ok){ marcarError(qd, txt || "Responde esta pregunta."); errs.push(qd); } }
+    var enc = valRadio(f,"encontro"), sv = valRadio(f,"sv_estado");
+    req("encontro", enc); req("motivo_no", valRadio(f,"motivo_no"));
+    req("coords", parseCoords($("coords").value), "Escribe las coordenadas como 4.535782, -75.672614 (dentro de Colombia).");
+    req("sv_estado", sv);
+    req("fotos", sv !== "si" || fotos.some(function(x){ return !x.cargando; }), "Agrega al menos una captura (Ctrl + V o arrastra la imagen).");
+    req("fotos", !fotos.some(function(x){ return x.cargando; }), "Espera a que termine de procesar la imagen.");
+    req("sv_fecha", /^(19|20)\d{2}-(0[1-9]|1[0-2])$/.test(f.elements.sv_fecha.value.trim()), "Usa el formato AAAA-MM, por ejemplo 2023-04.");
+    req("sv_enlace", /^https?:\/\/\S+$/.test(f.elements.sv_enlace.value.trim()), "Pega el enlace completo (empieza con https://).");
+    var pv = f.elements.pisos.value.trim(), ps = +pv;
+    req("pisos", pv === "" || (ps >= 1 && ps <= 80 && Math.floor(ps) === ps), "Escribe un número entero entre 1 y 80, o déjalo en blanco.");
+    req("sotano", valRadio(f,"sotano")); req("altillo", valRadio(f,"altillo"));
+    if (f.elements.material) req("material", f.elements.material.value);
+    req("indicios", f.querySelector('input[name="indicios"]:checked'), "Elige al menos una opción.");
+    if (f.elements.tipo_falla) req("tipo_falla", f.elements.tipo_falla.value);
+    req("afecta_via", valRadio(f,"afecta_via"));
+    req("ubicacion", valRadio(f,"ubicacion"));
+    return errs;
+  }
+  function recogerCampos(){
+    var f = $("faporte"), enc = valRadio(f,"encontro"), sv = valRadio(f,"sv_estado"), c = parseCoords($("coords").value) || {lat:"", lon:""};
+    var g = f.querySelector("[data-grupo]"), gVis = g && !g.hidden;
+    function v(n){ var el = f.elements[n]; return el ? String(el.value).trim() : ""; }
+    var campos = {
+      tipo_punto: actual.tipo, n: actual.n, municipio: actual.municipio, categoria: actual.categoria, direccion: actual.direccion,
+      lat_registrada: actual.lat, lon_registrada: actual.lon,
+      encontro: enc, motivo_no: enc === "no" ? valRadio(f,"motivo_no") : "",
+      lat: enc === "no" ? "" : c.lat, lon: enc === "no" ? "" : c.lon,
+      sv_estado: sv, sv_fecha: sv === "si" ? v("sv_fecha") : "", sv_enlace: sv === "si" ? v("sv_enlace") : "",
+      pisos: "", sotano: "", altillo: "", material: "", indicios: "", tipo_falla: "", afecta_via: "", extension_m: "",
+      ubicacion: enc === "no" ? "no_confirmado" : valRadio(f,"ubicacion")
+    };
+    if (enc !== "no") campos.pisos = v("pisos");
+    if (gVis && actual.tipo === "edificacion"){
+      campos.sotano = valRadio(f,"sotano"); campos.altillo = valRadio(f,"altillo"); campos.material = v("material");
+      campos.indicios = Array.prototype.map.call(f.querySelectorAll('input[name="indicios"]:checked'), function(x){ return x.value; }).join("; ");
+    }
+    if (gVis && actual.tipo === "geotecnico"){ campos.tipo_falla = v("tipo_falla"); campos.afecta_via = valRadio(f,"afecta_via"); campos.extension_m = v("extension_m"); }
+    return campos;
+  }
+  $("pguardar").addEventListener("click", function(){
+    if (!actual || guardando) return;
+    var errs = validar();
+    if (errs.length){
+      errs[0].scrollIntoView({block:"center", behavior:"smooth"});
+      var foc = errs[0].querySelector("input,select,textarea,.drop"); if (foc) foc.focus({preventScroll:true});
+      $("pestado").textContent = "Revisa " + (errs.length === 1 ? "la pregunta marcada" : "las " + errs.length + " preguntas marcadas") + "."; $("pestado").className = "estado err";
+      return;
+    }
+    var payload = {
+      codigo: actual.codigo, campos: recogerCampos(),
+      fotos: fotos.map(function(f){ return f.tipo === "nueva" ? {base64:f.base64} : {mantener:f.nombre}; })
+    };
+    guardando = true; $("pguardar").disabled = true; $("pestado").textContent = "Guardando…"; $("pestado").className = "estado";
+    var cod = actual.codigo;
+    api.guardar(payload).then(function(r){
+      guardando = false; sucio = false; tieneAporte = true;
+      hechos[cod] = (r.aporte && r.aporte.fecha) || new Date().toISOString();
+      if (actual && actual.codigo === cod){
+        fotos = fotos.map(function(f, i){ return {tipo:"guardada", nombre:nombreFoto(cod, i), src:f.src}; });
+        pintarFotos();
+        $("pguardar").disabled = false; $("pguardar").textContent = "Guardar cambios";
+        $("pestado").textContent = "Guardado. " + (payload.fotos.length ? "Fotos: " + fotos.map(function(f){ return f.nombre; }).join(", ") + "." : ""); $("pestado").className = "estado ok";
+      }
+      pintar(); toast("Aporte de " + cod + " guardado");
+    }).catch(function(e){
+      guardando = false; $("pguardar").disabled = false;
+      $("pestado").textContent = "No se pudo guardar: " + e.message + ". Intenta de nuevo."; $("pestado").className = "estado err";
+    });
+  });
+
+  $("pborrar").addEventListener("click", function(){
+    if (!actual || guardando) return;
+    var p = actual, cod = p.codigo;
+    if (!tieneAporte){
+      if (!sucio || confirm("¿Limpiar el formulario? Se borrará lo que escribiste y las imágenes sin guardar.")){ sucio = false; abrir(p, ultimoFoco); }
+      return;
+    }
+    if (!confirm("¿Borrar el aporte guardado de " + cod + "?\n\nSe quitará de la hoja de datos y sus fotos irán a la papelera de Drive. El punto volverá a quedar pendiente. Los mensajes del foro no se borran.")) return;
+    guardando = true; $("pborrar").disabled = true; $("pguardar").disabled = true;
+    $("pestado").textContent = "Borrando…"; $("pestado").className = "estado";
+    api.borrarAporte(cod).then(function(){
+      guardando = false; $("pborrar").disabled = false;
+      delete hechos[cod]; pintar(); toast("Aporte de " + cod + " borrado");
+      sucio = false; if (actual && actual.codigo === cod) abrir(p, ultimoFoco);
+    }).catch(function(e){
+      guardando = false; $("pborrar").disabled = false; $("pguardar").disabled = false;
+      $("pestado").textContent = "No se pudo borrar: " + e.message; $("pestado").className = "estado err";
+    });
+  });
+
+  // ---------- foro de observaciones y dudas ----------
+  function pintarHilos(msjs){
+    var box = $("hilos"); if (!box) return;
+    var raiz = msjs.filter(function(m){ return !m.responde_a; }).sort(function(a,b){ return a.fecha < b.fecha ? -1 : 1; });
+    if (!raiz.length){ box.innerHTML = '<p class="vacio">Todavía no hay observaciones ni dudas en este punto.</p>'; return; }
+    box.innerHTML = raiz.map(function(m){
+      var resps = msjs.filter(function(r){ return r.responde_a === m.id; }).sort(function(a,b){ return a.fecha < b.fecha ? -1 : 1; });
+      var pend = !resps.length;
+      return '<div class="hilo'+(pend?' pend':'')+'">'+
+        '<div class="mhead"><span class="chip '+(pend?'duda':'ok')+'">'+(pend?'Sin responder':'Respondida')+'</span><span>'+esc(fechaCorta(m.fecha))+'</span>'+
+          (esMio(m.id) ? '<button type="button" class="mborrar" data-borrarmsg="'+esc(m.id)+'" data-conresp="'+resps.length+'">Eliminar</button>' : '')+'</div>'+
+        '<p class="mtext">'+esc(m.texto)+'</p>'+
+        resps.map(function(r){ return '<div class="resp"><div class="mhead"><span>Respuesta · '+esc(fechaCorta(r.fecha))+'</span>'+
+          (esMio(r.id) ? '<button type="button" class="mborrar" data-borrarmsg="'+esc(r.id)+'" data-conresp="0">Eliminar</button>' : '')+
+          '</div><p class="mtext">'+esc(r.texto)+'</p></div>'; }).join("")+
+        '<div class="inl" style="justify-content:flex-start;margin-top:8px"><button type="button" class="btn sm" data-responder="1">Responder</button></div>'+
+        '<div class="rbox" hidden><textarea maxlength="2000" aria-label="Respuesta"></textarea><div class="inl"><button type="button" class="btn sm primary" data-enviar="'+esc(m.id)+'">Enviar respuesta</button></div></div>'+
+      '</div>';
+    }).join("");
+  }
+  function publicar(respondeA, ta){
+    ta = ta || $("nuevomsg");
+    var t = ta.value.trim(); if (!t){ ta.focus(); return; }
+    var cod = actual.codigo, btns = $("pbody").querySelectorAll("#publicar,[data-enviar]");
+    btns.forEach(function(b){ b.disabled = true; });
+    api.mensaje({codigo:cod, texto:t, responde_a: respondeA || ""}).then(function(r){
+      if (r && r.mensaje && r.mensaje.id){ misMsgs[r.mensaje.id] = Date.now(); grabar("conteo_mis_mensajes", misMsgs); }
+      ta.value = ""; return api.punto(cod);
+    }).then(function(r){
+      btns.forEach(function(b){ b.disabled = false; });
+      actualizarForo(cod, r.mensajes || []);
+      toast(respondeA ? "Respuesta publicada" : "Mensaje publicado");
+    }).catch(function(e){ btns.forEach(function(b){ b.disabled = false; }); toast("No se pudo publicar: " + e.message); });
+  }
+
+  function actualizarForo(cod, msjs){
+    if (actual && actual.codigo === cod) pintarHilos(msjs);
+    var o = {}; o[cod] = 0;
+    dudas = contarDudas(msjs, Object.assign({}, dudas, o));
+    if (!dudas[cod]) delete dudas[cod];
+    pintar();
+  }
+  $("pbody").addEventListener("click", function(e){
+    var b = e.target.closest("[data-borrarmsg]"); if (!b || !actual) return;
+    var id = b.getAttribute("data-borrarmsg"), n = +b.getAttribute("data-conresp");
+    if (!confirm(n ? "¿Eliminar esta duda? También se borrará" + (n === 1 ? " su respuesta." : "n sus " + n + " respuestas.") : "¿Eliminar este mensaje?")) return;
+    var cod = actual.codigo; b.disabled = true;
+    api.borrarMensaje(id).then(function(){ delete misMsgs[id]; grabar("conteo_mis_mensajes", misMsgs); return api.punto(cod); })
+      .then(function(r){ actualizarForo(cod, r.mensajes || []); toast("Mensaje eliminado"); })
+      .catch(function(err){ b.disabled = false; toast("No se pudo eliminar: " + err.message); });
+  });
+
+  // ---------- inicio ----------
+  if (rango && rango.d && rango.h) aplicarRango(rango.d, rango.h, true); else pintar();
+  refrescarResumen();
+})();
+</script>
+</body>
+</html>
