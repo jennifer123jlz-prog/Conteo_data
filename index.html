@@ -136,6 +136,8 @@
   #duplicado_de{text-transform:uppercase;font-family:var(--mono)}
   .inl{display:flex;gap:8px}
   .inl input{flex:1}
+  .rango2 label{flex:1;display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+  .rango2 input{width:100%}
   .grp{border:1px solid var(--line);border-radius:10px;padding:12px 12px 0;margin:0 0 16px}
   .grp>h3{margin:0 0 10px;font:700 13px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .ro{font:700 15px var(--mono)}
@@ -199,7 +201,7 @@
       <li>Escribe el rango de N° que te asignaron y pulsa <b>Ver mis puntos</b>. Puedes filtrar por municipio.</li>
       <li>Pulsa <b>Abrir en Google Maps</b> (se abre en otra pestaña). Ahí entra a Street View arrastrando el muñequito amarillo o tocando la foto de la calle.</li>
       <li>Vuelve a esta página y pulsa <b>Registrar aporte</b>. Si el edificio está en otro lugar, en Maps haz clic derecho sobre él, copia las coordenadas y pégalas en el formulario.</li>
-      <li>Toma una captura y pégala en el formulario con <b>Ctrl + V</b>, o arrastra el archivo. No se requiere colocar nombre al archivo.</li>
+      <li>Toma una captura y pégala en el formulario con <b>Ctrl + V</b>, o arrastra el archivo. No se requiere que el archivo tenga un nombre específico.</li>
       <li>Si tienes una duda, escríbela en <b>Observaciones o dudas</b> del mismo punto. Las respuestas aparecen ahí.</li>
     </ol>
   </details>
@@ -560,6 +562,7 @@
     ubicacion: [["confirmada","Sí, está en la coordenada registrada"],["corregida","Sí, pero está en otro lugar (corrijo la coordenada)"],["dudosa","Posiblemente, pero no estoy seguro"],["no_ubicado","No se pudo ubicar"]],
     motivo_no: [["direccion_general","La dirección es muy general (solo barrio, sector o municipio)"],["varios_posibles","Varios edificios podrían ser; no se puede saber cuál"],["no_aparece","El nombre o lugar del reporte no aparece en Google Maps"],["no_coincide","Lo que dice el reporte no coincide con lo que se ve (otra calle, otro municipio u otro tipo de edificio)"],["zona_cambio","La zona cambió y no se reconoce el edificio (demolido, reconstruido)"],["otro","Otro"]],
     conteo_pisos: [["seguro","Seguro"],["aproximado","Aproximado"]],
+    conjunto: [["no","Un solo edificio"],["si","Varios edificios (hospital, colegio, conjunto, pueblo…)"]],
     sv_estado: [["si","Sí"],["tapada","Vista tapada o no se identifica"],["sin_cobertura","Sin cobertura"]],
     si_no_ns: [["si","Sí"],["no","No"],["no_se","No se puede ver"]],
     material: [["concreto","Concreto reforzado (pórticos)"],["mamp_confinada","Mampostería confinada"],["mamp_simple","Mampostería simple o sin confinar"],["adobe","Adobe o tapia"],["madera","Madera o bahareque"],["metalica","Estructura metálica"],["mixto","Mixto"],["no_se","No se distingue"]],
@@ -607,10 +610,17 @@
         q("sv_fecha", '<label class="lbl" for="sv_fecha">Fecha de la imagen (AAAA-MM)</label><span class="h">Aparece en el pie de la vista de Street View.</span><input id="sv_fecha" name="sv_fecha" type="text" placeholder="2023-04" maxlength="7">')+
         q("sv_enlace", '<label class="lbl" for="sv_enlace">Enlace de Street View</label><span class="h">Copia la dirección de la barra del navegador mientras estás en la vista.</span><input id="sv_enlace" name="sv_enlace" type="url" placeholder="https://www.google.com/maps/@…">')+
       '</div>'+
+      q("conjunto", '<span class="lbl">¿El punto es un edificio o varios?</span>'+
+        '<span class="h">Elige "varios" si el reporte abarca varios bloques o construcciones (un hospital con pabellones, un pueblo, etc.).</span>'+
+        radios("conjunto", OPC.conjunto), ' data-nono="1"')+
       q("pisos", '<label class="lbl" for="pisos">Número de pisos sobre el nivel de la calle</label>'+
         '<span class="h">Planta baja = 1. No cuentan tanques, cuartos de máquinas ni campanarios. '+
         '<b>Déjalo en blanco</b> si no se puede determinar'+(edif ? '' : ' o si es una vía, puente o deslizamiento')+'.</span>'+
-        '<input id="pisos" name="pisos" type="number" min="1" max="80" step="1" inputmode="numeric" placeholder="En blanco = no se puede determinar">', ' data-nono="1"')+
+        '<input id="pisos" name="pisos" type="number" min="1" max="80" step="1" inputmode="numeric" placeholder="En blanco = no se puede determinar">', ' data-nono="1" data-conj="no"')+
+      q("pisos_rango", '<span class="lbl">Número de pisos de los edificios (mínimo y máximo)</span>'+
+        '<span class="h">Pisos del edificio más bajo y del más alto, sobre el nivel de la calle. Si todos tienen lo mismo, pon el mismo número en ambos. <b>Déjalos en blanco</b> si no se puede determinar.</span>'+
+        '<div class="inl rango2"><label>Mínimo<input id="pisos_min" name="pisos_min" type="number" min="1" max="80" step="1" inputmode="numeric"></label>'+
+        '<label>Máximo<input id="pisos_max" name="pisos_max" type="number" min="1" max="80" step="1" inputmode="numeric"></label></div>', ' data-nono="1" data-conj="si"')+
       q("conteo_pisos", '<span class="lbl">Conteo de pisos</span><span class="h">Seguro: se ven claramente todos los niveles. Aproximado: parte tapada, doble altura o estimaste por perspectiva.</span>'+radios("conteo_pisos", OPC.conteo_pisos, true), ' data-conpisos="1"')+
       (edif ? '' :
       '<div class="grp" data-grupo="geo"><h3>Falla geotécnica</h3>'+
@@ -641,7 +651,10 @@
     f.querySelectorAll('[data-otro]').forEach(function(el){ el.hidden = !(no && valRadio(f, "motivo_no") === "otro"); });
     f.querySelectorAll('[data-nono]').forEach(function(el){ el.hidden = no; });
     f.querySelectorAll('[data-sv="si"]').forEach(function(el){ el.hidden = sv !== "si"; });
-    f.querySelectorAll('[data-conpisos]').forEach(function(el){ el.hidden = no || f.elements.pisos.value.trim() === ""; });
+    var conj = valRadio(f, "conjunto") || "no";
+    f.querySelectorAll('[data-conj]').forEach(function(el){ el.hidden = no || el.getAttribute("data-conj") !== conj; });
+    var hayPisos = conj === "si" ? (f.elements.pisos_min.value.trim() !== "" || f.elements.pisos_max.value.trim() !== "") : f.elements.pisos.value.trim() !== "";
+    f.querySelectorAll('[data-conpisos]').forEach(function(el){ el.hidden = no || !hayPisos; });
     // confirmada = se usa la coordenada registrada, sin editarla
     var ci = $("coords"), conf = ub === "confirmada";
     if (conf){ ci.value = coordTxt(actual); }
@@ -669,6 +682,7 @@
     $("pficha").href = urlFicha(p);
     $("pbody").innerHTML = formHTML(p);
     $("coords").value = coordTxt(p);
+    setRadio($("faporte"), "conjunto", "no");
     $("pestado").textContent = "Cargando…"; $("pestado").className = "estado";
     $("pguardar").disabled = true;
     visibilidad(); pintarFotos();
@@ -691,9 +705,13 @@
   }
   function cargarAporte(a){
     var f = $("faporte");
-    ["ubicacion","motivo_no","sv_estado","sotano","altillo","afecta_via","conteo_pisos"].forEach(function(n){ if (a[n]) setRadio(f, n, a[n]); });
-    ["motivo_otro","duplicado_de","sv_fecha","sv_enlace","pisos","material","tipo_falla","extension_m"].forEach(function(n){ var el = f.elements[n]; if (el && a[n] != null && a[n] !== "") el.value = a[n]; });
+    ["ubicacion","motivo_no","sv_estado","afecta_via","conteo_pisos","conjunto"].forEach(function(n){ if (a[n]) setRadio(f, n, a[n]); });
+    ["motivo_otro","duplicado_de","sv_fecha","sv_enlace","tipo_falla","extension_m"].forEach(function(n){ var el = f.elements[n]; if (el && a[n] != null && a[n] !== "") el.value = a[n]; });
     if (a.lat !== "" && a.lat != null && a.lon !== "" && a.lon != null) $("coords").value = a.lat + ", " + a.lon;
+    if (a.conjunto === "si"){
+      if (a.pisos_min !== "" && a.pisos_min != null) f.elements.pisos_min.value = a.pisos_min;
+      if (a.pisos_max !== "" && a.pisos_max != null) f.elements.pisos_max.value = a.pisos_max;
+    } else if (a.pisos !== "" && a.pisos != null) f.elements.pisos.value = a.pisos;
     String(a.indicios || "").split(/;\s*/).forEach(function(v){ var x = f.querySelector('input[name="indicios"][value="'+v+'"]'); if (x) x.checked = true; });
     visibilidad();
   }
@@ -729,7 +747,7 @@
     var qd = t.closest(".q"); if (qd) limpiarError(qd);
     visibilidad();
   });
-  $("pbody").addEventListener("input", function(e){ if (e.target.closest("#faporte")) { sucio = true; var qd = e.target.closest(".q"); if (qd) limpiarError(qd); if (e.target.id === "pisos") visibilidad(); } });
+  $("pbody").addEventListener("input", function(e){ if (e.target.closest("#faporte")) { sucio = true; var qd = e.target.closest(".q"); if (qd) limpiarError(qd); if (/^pisos/.test(e.target.id)) visibilidad(); } });
 
   // pegar coordenadas
   $("pbody").addEventListener("click", function(e){
@@ -842,8 +860,15 @@
     req("fotos", !fotos.some(function(x){ return x.cargando; }), "Espera a que termine de procesar la imagen.");
     req("sv_fecha", /^(19|20)\d{2}-(0[1-9]|1[0-2])$/.test(f.elements.sv_fecha.value.trim()), "Usa el formato AAAA-MM, por ejemplo 2023-04.");
     req("sv_enlace", /^https?:\/\/\S+$/.test(f.elements.sv_enlace.value.trim()), "Pega el enlace completo (empieza con https://).");
-    var pv = f.elements.pisos.value.trim(), ps = +pv;
-    req("pisos", pv === "" || (ps >= 1 && ps <= 80 && Math.floor(ps) === ps), "Escribe un número entero entre 1 y 80, o déjalo en blanco.");
+    function entero(x){ var n = +x; return n >= 1 && n <= 80 && Math.floor(n) === n; }
+    var pv = f.elements.pisos.value.trim();
+    req("pisos", pv === "" || entero(pv), "Escribe un número entero entre 1 y 80, o déjalo en blanco.");
+    var pmin = f.elements.pisos_min.value.trim(), pmax = f.elements.pisos_max.value.trim();
+    req("pisos_rango", (pmin === "" && pmax === "") || (pmin !== "" && pmax !== ""), "Escribe el mínimo y el máximo, o deja los dos en blanco.");
+    if (pmin !== "" && pmax !== ""){
+      req("pisos_rango", entero(pmin) && entero(pmax), "Usa números enteros entre 1 y 80.");
+      if (entero(pmin) && entero(pmax)) req("pisos_rango", +pmin <= +pmax, "El mínimo no puede ser mayor que el máximo.");
+    }
     req("conteo_pisos", valRadio(f,"conteo_pisos"));
     if (f.elements.tipo_falla) req("tipo_falla", f.elements.tipo_falla.value);
     req("afecta_via", valRadio(f,"afecta_via"));
@@ -864,7 +889,13 @@
       sv_estado: sv, sv_fecha: sv === "si" ? v("sv_fecha") : "", sv_enlace: sv === "si" ? v("sv_enlace") : "",
       pisos: "", conteo_pisos: "", sotano: "", altillo: "", material: "", indicios: "", tipo_falla: "", afecta_via: "", extension_m: ""
     };
-    if (!no){ campos.pisos = v("pisos"); if (campos.pisos) campos.conteo_pisos = valRadio(f,"conteo_pisos"); }
+    campos.conjunto = ""; campos.pisos_min = ""; campos.pisos_max = "";
+    if (!no){
+      campos.conjunto = valRadio(f,"conjunto") || "no";
+      if (campos.conjunto === "si"){ campos.pisos_min = v("pisos_min"); campos.pisos_max = v("pisos_max"); }
+      else { campos.pisos = v("pisos"); campos.pisos_min = campos.pisos; campos.pisos_max = campos.pisos; }
+      if (campos.pisos_min || campos.pisos_max) campos.conteo_pisos = valRadio(f,"conteo_pisos");
+    }
     if (gVis && actual.tipo === "geotecnico"){ campos.tipo_falla = v("tipo_falla"); campos.afecta_via = valRadio(f,"afecta_via"); campos.extension_m = v("extension_m"); }
     return campos;
   }
