@@ -85,6 +85,8 @@
   .chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--bg);white-space:nowrap}
   .chip.geo{background:var(--geo-bg);color:var(--geo);border-color:transparent}
   .chip.ok{background:var(--ok);color:var(--ok-ink);border-color:transparent}
+  .chip.mun-chip{background:transparent;border-color:var(--muted);color:var(--ink)}
+  .chip.mun-chip::before{content:"◉ ";color:var(--accent);font-size:10px}
   .chip.duda{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
   .ubi-l{display:block;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:2px 0 2px}
   .dir{margin:0;font-weight:600}
@@ -129,8 +131,9 @@
   .q .msg{display:block;color:var(--err);font-size:13px;margin-top:4px}
   .opts{display:flex;flex-direction:column;gap:2px}
   .opts.row{flex-direction:row;flex-wrap:wrap;gap:4px 18px}
-  .opts label{display:flex;gap:8px;align-items:center;min-height:36px;cursor:pointer}
-  .opts input{width:18px;height:18px;flex:none}
+  .opts label{display:flex;gap:8px;align-items:flex-start;min-height:36px;padding:7px 0 3px;cursor:pointer}
+  .opts input{width:18px;height:18px;flex:none;margin:2px 0 0}
+  #duplicado_de{text-transform:uppercase;font-family:var(--mono)}
   .inl{display:flex;gap:8px}
   .inl input{flex:1}
   .grp{border:1px solid var(--line);border-radius:10px;padding:12px 12px 0;margin:0 0 16px}
@@ -153,11 +156,24 @@
   .mhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
   .mtext{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
   .resp{margin:8px 0 0 14px;padding:6px 0 0 12px;border-left:3px solid var(--ok)}
+  .macc{margin-left:auto;display:flex;gap:12px}
+  .macc .mborrar{margin-left:0}
+  .macc .mborrar.ed{color:var(--ink)}
+  .ebox{margin-top:6px}
+  .ebox textarea{width:100%;min-height:64px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
+  .ebox .inl{margin-top:6px;justify-content:flex-end}
+  .edtag{font-style:italic}
   .resp .mtext{font-size:15px}
   .rbox{margin-top:8px}
   .rbox textarea,.nuevo textarea{width:100%;min-height:64px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
   .rbox .inl,.nuevo .inl{margin-top:6px;justify-content:flex-end}
   .vacio{color:var(--muted);font-size:14px;margin:0 0 10px}
+  .dlg-wrap{position:fixed;inset:0;background:var(--scrim);z-index:40;display:flex;align-items:center;justify-content:center;padding:16px}
+  .dlg{background:var(--panel);color:var(--ink);border-radius:12px;max-width:440px;width:100%;padding:18px 18px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .dlg p{margin:0 0 14px;white-space:pre-line}
+  .dlg input{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;margin:0 0 14px}
+  .dlg .inl{justify-content:flex-end;flex-wrap:wrap}
+  .btn.danger-fill{background:var(--err);border-color:var(--err);color:var(--panel)}
   .toast{position:fixed;left:16px;bottom:16px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;z-index:30;max-width:90vw}
 
   @media (max-width:700px){
@@ -183,7 +199,7 @@
       <li>Escribe el rango de N° que te asignaron y pulsa <b>Ver mis puntos</b>. Puedes filtrar por municipio.</li>
       <li>Pulsa <b>Abrir en Google Maps</b> (se abre en otra pestaña). Ahí entra a Street View arrastrando el muñequito amarillo o tocando la foto de la calle.</li>
       <li>Vuelve a esta página y pulsa <b>Registrar aporte</b>. Si el edificio está en otro lugar, en Maps haz clic derecho sobre él, copia las coordenadas y pégalas en el formulario.</li>
-      <li>Toma una captura y pégala en el formulario con <b>Ctrl + V</b>, o arrastra el archivo. El formulario lo guarda automáticamente con el código del punto.</li>
+      <li>Toma una captura y pégala en el formulario con <b>Ctrl + V</b>, o arrastra el archivo. No necesitas escribir un nombre para el archivo: se guarda automáticamente con uno propio.</li>
       <li>Si tienes una duda, escríbela en <b>Observaciones o dudas</b> del mismo punto. Las respuestas aparecen ahí.</li>
     </ol>
   </details>
@@ -250,6 +266,14 @@
   </div>
 </div>
 
+<div class="dlg-wrap" id="dlg" hidden>
+  <div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dlgt">
+    <p id="dlgt"></p>
+    <input id="dlgin" type="text" hidden aria-labelledby="dlgt">
+    <div class="inl"><button class="btn" type="button" id="dlgno">Cancelar</button><button class="btn primary" type="button" id="dlgsi">Aceptar</button></div>
+  </div>
+</div>
+
 <script src="datos.js"></script>
 <script>
 (function(){
@@ -257,7 +281,7 @@
   // === CONFIGURACION ============================================
   // URL de la aplicacion web de Google Apps Script (termina en /exec).
   // Vacia = modo prototipo: todo se guarda solo en este navegador.
-  var API_URL = "https://script.google.com/macros/s/AKfycbyqOFtJcj_KWwJ1yoPUhFhG9r-cKz1F5tvHb43e8Gw5EQb8FKRkz_lUJ4EWk6lLTmHh/exec";
+  var API_URL = "";
   // ==============================================================
 
   var PAGE = 25, MAX_FOTOS = 3, MAX_LADO = 1600;
@@ -275,7 +299,38 @@
   function fold(s){ return (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase(); }
   function fechaCorta(iso){ try { return new Date(iso).toLocaleString("es-PE",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); } catch(e){ return iso; } }
   function nombreFoto(cod, i){ return cod + (i ? "_" + (i+1) : "") + ".jpg"; }
+  // Confirmación dentro de la página (las ventanas confirm()/prompt() del navegador
+  // se bloquean en vistas previas y marcos aislados)
+  var dlgRes = null, dlgFoco = null;
+  function dialogo(texto, opc){
+    opc = opc || {};
+    return new Promise(function(res){
+      dlgFoco = document.activeElement; dlgRes = res;
+      $("dlgt").textContent = texto;
+      var inp = $("dlgin"); inp.hidden = !opc.input; inp.value = "";
+      $("dlgsi").textContent = opc.ok || "Aceptar";
+      $("dlgsi").className = "btn " + (opc.peligro ? "danger-fill" : "primary");
+      $("dlgno").textContent = opc.cancelar || "Cancelar";
+      $("dlg").hidden = false;
+      setTimeout(function(){ (opc.input ? inp : $("dlgsi")).focus(); }, 0);
+    });
+  }
+  function cerrarDialogo(valor){
+    if ($("dlg").hidden) return;
+    $("dlg").hidden = true;
+    var r = dlgRes; dlgRes = null;
+    if (dlgFoco && document.body.contains(dlgFoco)) dlgFoco.focus();
+    if (r) r(valor);
+  }
+  function confirmar(texto, ok, peligro){ return dialogo(texto, {ok:ok, peligro:peligro}); }
+  function pedirTexto(texto){ return dialogo(texto, {input:true, ok:"Continuar"}); }
+  $("dlgsi").addEventListener("click", function(){ cerrarDialogo($("dlgin").hidden ? true : $("dlgin").value); });
+  $("dlgno").addEventListener("click", function(){ cerrarDialogo($("dlgin").hidden ? false : null); });
+  $("dlgin").addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); $("dlgsi").click(); } });
+  $("dlg").addEventListener("click", function(e){ if (e.target.id === "dlg") $("dlgno").click(); });
+
   function toast(t){
+    document.querySelectorAll(".toast").forEach(function(t){ t.remove(); });
     var el = document.createElement("div"); el.className = "toast"; el.setAttribute("role","status"); el.textContent = t;
     document.body.appendChild(el); setTimeout(function(){ el.remove(); }, 2800);
   }
@@ -283,8 +338,9 @@
   // ---------- API: remota (Apps Script) o local (prototipo) ----------
   function clave(){ return leer("conteo_clave", ""); }
   function pedirClave(){
-    var k = window.prompt("Escribe la clave del equipo (te la da quien coordina):", "");
-    if (k == null) return false; grabar("conteo_clave", k.trim()); return true;
+    return pedirTexto("Escribe la clave del equipo (te la da quien coordina):").then(function(k){
+      if (k == null) return false; grabar("conteo_clave", k.trim()); return true;
+    });
   }
   function llamar(metodo, datos, reintento){
     var p;
@@ -296,7 +352,12 @@
       p = fetch(API_URL, { method:"POST", body: JSON.stringify(datos) }); // text/plain: sin preflight CORS
     }
     return p.then(function(r){ return r.json(); }).then(function(j){
-      if (j && j.error === "clave" && !reintento && pedirClave()) return llamar(metodo, datos, true);
+      if (j && j.error === "clave" && !reintento){
+        return pedirClave().then(function(ok){
+          if (!ok) throw new Error("Falta la clave del equipo");
+          return llamar(metodo, datos, true);
+        });
+      }
       if (!j || j.error) throw new Error((j && j.mensaje) || (j && j.error) || "Respuesta vacía");
       return j;
     });
@@ -307,7 +368,8 @@
     guardar: function(d){ d.accion = "guardar"; return llamar("POST", d); },
     mensaje: function(d){ d.accion = "mensaje"; return llamar("POST", d); },
     borrarAporte: function(c){ return llamar("POST", {accion:"borrar_aporte", codigo:c}); },
-    borrarMensaje: function(id){ return llamar("POST", {accion:"borrar_mensaje", id:id}); }
+    borrarMensaje: function(id){ return llamar("POST", {accion:"borrar_mensaje", id:id}); },
+    editarMensaje: function(id, texto){ return llamar("POST", {accion:"editar_mensaje", id:id, texto:texto}); }
   };
   var DKEY = "conteo_demo_v1";
   function demoDB(){ return leer(DKEY, {aportes:{}, mensajes:[]}); }
@@ -350,6 +412,10 @@
     borrarMensaje: function(id){
       var db = demoDB(); db.mensajes = db.mensajes.filter(function(m){ return m.id !== id && m.responde_a !== id; }); grabar(DKEY, db);
       return Promise.resolve({ok:true});
+    },
+    editarMensaje: function(id, texto){
+      var db = demoDB(); db.mensajes.forEach(function(m){ if (m.id === id){ m.texto = texto; m.editado = new Date().toISOString(); } }); grabar(DKEY, db);
+      return Promise.resolve({ok:true});
     }
   };
   function contarDudas(mensajes, out){
@@ -375,8 +441,12 @@
 
   (function(){
     var m = {}; puntos.forEach(function(p){ m[p.municipio] = (m[p.municipio]||0)+1; });
-    $("fmun").innerHTML = '<option value="">Todos</option>' + Object.keys(m).sort(function(a,b){ return a.localeCompare(b,"es"); })
-      .map(function(k){ return '<option value="'+esc(k)+'">'+esc(k)+' ('+m[k]+')</option>'; }).join("");
+    var PRIO = ["Cali","Pereira","Manizales","Buenaventura","Armenia","Quibdó"];
+    var opt = function(k){ return '<option value="'+esc(k)+'">'+esc(k)+' ('+m[k]+')</option>'; };
+    var resto = Object.keys(m).filter(function(k){ return PRIO.indexOf(k) === -1; }).sort(function(a,b){ return a.localeCompare(b,"es"); });
+    $("fmun").innerHTML = '<option value="">Todos</option>' +
+      '<optgroup label="Municipios de mayor interés">' + PRIO.filter(function(k){ return m[k]; }).map(opt).join("") + '</optgroup>' +
+      '<optgroup label="Otros municipios">' + resto.map(opt).join("") + '</optgroup>';
   })();
 
   function refrescarResumen(){
@@ -385,7 +455,8 @@
       $("errconn").hidden = true; pintar();
     }).catch(function(e){
       $("errconn").hidden = false;
-      $("errconn").textContent = "No se pudo cargar el avance del equipo (" + e.message + "). Revisa tu conexión y recarga la página.";
+      $("errconn").textContent = /clave/i.test(e.message) ? "La clave del equipo no es correcta o falta. Recarga la página para escribirla de nuevo." :
+        "No se pudo cargar el avance del equipo (" + e.message + "). Revisa tu conexión y recarga la página.";
       pintar();
     });
   }
@@ -431,6 +502,7 @@
         '<div class="cardhead">'+
           '<span class="num">N° '+p.n+'</span><span class="code">'+esc(p.codigo)+'</span>'+
           '<span class="chip'+(p.tipo==="geotecnico"?' geo':'')+'">'+esc(p.categoria)+'</span>'+
+          '<span class="chip mun-chip" title="Municipio">'+esc(p.municipio)+'</span>'+
           (h ? '<span class="chip ok">✓ Hecho</span>' : '')+
           (nd ? '<span class="chip duda">'+nd+(nd===1?' duda sin responder':' dudas sin responder')+'</span>' : '')+
         '</div>'+
@@ -470,7 +542,7 @@
   $("next").addEventListener("click", function(){ est.page++; pintar(); $("lista").scrollIntoView(); });
   function copiar(txt){
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function(){ toast("Coordenadas copiadas: " + txt); })
-      .catch(function(){ window.prompt("Copia las coordenadas:", txt); });
+      .catch(function(){ toast("Copia a mano: " + txt); });
   }
   $("lista-puntos").addEventListener("click", function(e){
     var c = e.target.closest("[data-copy]"); if (c){ copiar(c.getAttribute("data-copy")); return; }
@@ -483,15 +555,15 @@
   // ---------- panel del aporte ----------
   var actual = null, ultimoFoco = null, fotos = [], sucio = false, guardando = false, tieneAporte = false;
   var OPC = {
-    encontro: [["si","Sí"],["dudoso","Dudoso / no estoy seguro"],["no","No"]],
-    motivo_no: [["no_ubicable","No se puede identificar el edificio"],["direccion_insuficiente","La dirección no alcanza"],["sin_cobertura","Sin cobertura de Street View"],["demolido","El edificio ya no existe (colapsado o demolido)"],["duplicado","Parece duplicado de otro punto"],["otro","Otro (explícalo en observaciones o dudas)"]],
+    ubicacion: [["confirmada","Sí, está en la coordenada registrada"],["corregida","Sí, pero está en otro lugar (corrijo la coordenada)"],["dudosa","Posiblemente, pero no estoy seguro"],["no_ubicado","No se pudo ubicar"]],
+    motivo_no: [["direccion_general","La dirección es muy general (solo barrio, sector o municipio)"],["varios_posibles","Varios edificios podrían ser; no se puede saber cuál"],["no_aparece","El nombre o lugar del reporte no aparece en Google Maps"],["no_coincide","Lo que dice el reporte no coincide con lo que se ve (otra calle, otro municipio u otro tipo de edificio)"],["zona_cambio","La zona cambió y no se reconoce el edificio (demolido, reconstruido)"],["otro","Otro"]],
+    conteo_pisos: [["seguro","Seguro"],["aproximado","Aproximado"]],
     sv_estado: [["si","Sí"],["tapada","Vista tapada o no se identifica"],["sin_cobertura","Sin cobertura"]],
     si_no_ns: [["si","Sí"],["no","No"],["no_se","No se puede ver"]],
     material: [["concreto","Concreto reforzado (pórticos)"],["mamp_confinada","Mampostería confinada"],["mamp_simple","Mampostería simple o sin confinar"],["adobe","Adobe o tapia"],["madera","Madera o bahareque"],["metalica","Estructura metálica"],["mixto","Mixto"],["no_se","No se distingue"]],
     indicios: [["inclinacion","Edificio o poste inclinado"],["asentamiento","Asentamiento o hundimiento del terreno"],["grietas","Grietas en el terreno o el pavimento"],["arena","Arena expulsada (licuefacción)"],["talud","Talud o ladera inestable cercana"],["ninguno","Ninguno visible"],["no_se","No se puede apreciar"]],
     tipo_falla: [["deslizamiento","Deslizamiento o derrumbe de talud"],["asentamiento","Asentamiento o hundimiento"],["grieta","Grieta en la calzada o el terreno"],["puente","Daño en puente o estribo"],["contencion","Falla de muro u obra de contención"],["licuefaccion","Licuefacción"],["otro","Otro"]],
     afecta_via: [["total","Cierra la vía totalmente"],["parcial","Paso parcial"],["no","No afecta el paso"],["no_se","No se sabe"]],
-    ubicacion: [["confirmado","Confirmado"],["no_confirmado","No confirmado"]]
   };
   function radios(name, ops, row){
     return '<div class="opts'+(row?' row':'')+'" role="radiogroup">'+ops.map(function(o){
@@ -512,10 +584,12 @@
       '</div></details>'+
       '<form id="faporte" novalidate autocomplete="off">'+
       '<h2 class="sec-t">Aporte</h2>'+
-      q("encontro", '<span class="lbl">¿Encontraste el edificio (o el lugar) de este punto?</span>'+radios("encontro", OPC.encontro))+
-      q("motivo_no", '<span class="lbl">¿Por qué no se pudo?</span>'+radios("motivo_no", OPC.motivo_no), ' data-si="no"')+
+      q("ubicacion", '<span class="lbl">¿Ubicaste en el mapa el edificio (o lugar) del reporte?</span>'+
+        '<span class="h">Búscalo en Google Maps con la ubicación y la descripción del reporte.</span>'+radios("ubicacion", OPC.ubicacion))+
+      q("motivo_no", '<span class="lbl">¿Por qué no se pudo ubicar?</span><span class="h">Elige el motivo principal.</span>'+radios("motivo_no", OPC.motivo_no), ' data-si="no"')+
+      q("motivo_otro", '<label class="lbl" for="motivo_otro">Explica brevemente el motivo</label><input id="motivo_otro" name="motivo_otro" type="text" maxlength="300">', ' data-otro="1"')+
       q("coords", '<label class="lbl" for="coords">Coordenadas del edificio</label>'+
-        '<span class="h">Viene la coordenada registrada. Si el edificio está en otro lugar, en Google Maps haz clic derecho sobre él, copia las coordenadas y pégalas aquí.</span>'+
+        '<span class="h" id="coordsh"></span>'+
         '<div class="inl"><input id="coords" name="coords" type="text" inputmode="decimal" placeholder="4.535782, -75.672614"><button type="button" class="btn sm" id="pegarc">Pegar</button></div>', ' data-nono="1"')+
       q("sv_estado", '<span class="lbl">Street View en ese lugar</span>'+radios("sv_estado", OPC.sv_estado))+
       '<div>'+
@@ -535,6 +609,7 @@
         '<span class="h">Planta baja = 1. No cuentan tanques, cuartos de máquinas ni campanarios. '+
         '<b>Déjalo en blanco</b> si no se puede determinar'+(edif ? '' : ' o si es una vía, puente o deslizamiento')+'.</span>'+
         '<input id="pisos" name="pisos" type="number" min="1" max="80" step="1" inputmode="numeric" placeholder="En blanco = no se puede determinar">', ' data-nono="1"')+
+      q("conteo_pisos", '<span class="lbl">Conteo de pisos</span><span class="h">Seguro: se ven claramente todos los niveles. Aproximado: parte tapada, doble altura o estimaste por perspectiva.</span>'+radios("conteo_pisos", OPC.conteo_pisos, true), ' data-conpisos="1"')+
       (edif ?
       '<div class="grp" data-grupo="edif"><h3>Edificio</h3>'+
         q("sotano", '<span class="lbl">¿Se ve sótano o semisótano?</span>'+radios("sotano", OPC.si_no_ns, true))+
@@ -547,7 +622,9 @@
         q("afecta_via", '<span class="lbl">¿Afecta el paso por la vía?</span>'+radios("afecta_via", OPC.afecta_via))+
         q("extension_m", '<label class="lbl" for="extension_m">Extensión aproximada (metros, opcional)</label><input id="extension_m" name="extension_m" type="number" min="0" inputmode="numeric">')+
       '</div>')+
-      q("ubicacion", '<span class="lbl">Ubicación</span><span class="h">¿Confirmaste que este es el edificio o lugar del reporte?</span>'+radios("ubicacion", OPC.ubicacion, true), ' data-nono="1"')+
+      q("duplicado_de", '<label class="lbl" for="duplicado_de">¿Parece duplicado de otro punto? (opcional)</label>'+
+        '<span class="h">Si otro punto de la lista es el mismo edificio o lugar, escribe su código. Ejemplo: P-1234.</span>'+
+        '<input id="duplicado_de" name="duplicado_de" type="text" maxlength="12" placeholder="P-1234" autocapitalize="characters">')+
     '</form>'+
     '<section class="foro" aria-labelledby="foro-t">'+
       '<h2 class="sec-t" id="foro-t">Observaciones o dudas</h2>'+
@@ -563,12 +640,21 @@
 
   function visibilidad(){
     var f = $("faporte"); if (!f) return;
-    var enc = valRadio(f, "encontro"), sv = valRadio(f, "sv_estado");
-    f.querySelectorAll('[data-si="no"]').forEach(function(el){ el.hidden = enc !== "no"; });
-    f.querySelectorAll('[data-nono]').forEach(function(el){ el.hidden = enc === "no"; });
+    var ub = valRadio(f, "ubicacion"), no = ub === "no_ubicado", sv = valRadio(f, "sv_estado");
+    f.querySelectorAll('[data-si="no"]').forEach(function(el){ el.hidden = !no; });
+    f.querySelectorAll('[data-otro]').forEach(function(el){ el.hidden = !(no && valRadio(f, "motivo_no") === "otro"); });
+    f.querySelectorAll('[data-nono]').forEach(function(el){ el.hidden = no; });
     f.querySelectorAll('[data-sv="si"]').forEach(function(el){ el.hidden = sv !== "si"; });
+    f.querySelectorAll('[data-conpisos]').forEach(function(el){ el.hidden = no || f.elements.pisos.value.trim() === ""; });
+    // confirmada = se usa la coordenada registrada, sin editarla
+    var ci = $("coords"), conf = ub === "confirmada";
+    if (conf){ ci.value = coordTxt(actual); }
+    ci.readOnly = conf; $("pegarc").disabled = conf;
+    $("coordsh").textContent = conf ? "Se usa la coordenada registrada." :
+      ub === "corregida" ? "En Google Maps haz clic derecho sobre el edificio, copia las coordenadas y pégalas aquí." :
+      "Viene la coordenada registrada. Si crees que el edificio está en otro lugar, pega aquí las coordenadas de Google Maps.";
     var g = f.querySelector("[data-grupo]");
-    if (g) g.hidden = enc === "no" || (g.getAttribute("data-grupo") === "edif" && sv !== "si");
+    if (g) g.hidden = no || (g.getAttribute("data-grupo") === "edif" && sv !== "si");
   }
 
   function parseCoords(t){
@@ -609,22 +695,30 @@
   }
   function cargarAporte(a){
     var f = $("faporte");
-    ["encontro","motivo_no","sv_estado","sotano","altillo","afecta_via","ubicacion"].forEach(function(n){ if (a[n]) setRadio(f, n, a[n]); });
-    ["sv_fecha","sv_enlace","pisos","material","tipo_falla","extension_m"].forEach(function(n){ var el = f.elements[n]; if (el && a[n] != null && a[n] !== "") el.value = a[n]; });
+    ["ubicacion","motivo_no","sv_estado","sotano","altillo","afecta_via","conteo_pisos"].forEach(function(n){ if (a[n]) setRadio(f, n, a[n]); });
+    ["motivo_otro","duplicado_de","sv_fecha","sv_enlace","pisos","material","tipo_falla","extension_m"].forEach(function(n){ var el = f.elements[n]; if (el && a[n] != null && a[n] !== "") el.value = a[n]; });
     if (a.lat !== "" && a.lat != null && a.lon !== "" && a.lon != null) $("coords").value = a.lat + ", " + a.lon;
     String(a.indicios || "").split(/;\s*/).forEach(function(v){ var x = f.querySelector('input[name="indicios"][value="'+v+'"]'); if (x) x.checked = true; });
     visibilidad();
   }
   function cerrar(){
     if (guardando) return;
-    if (sucio && !confirm("Tienes cambios sin guardar en este punto. ¿Cerrar de todos modos?")) return;
+    if (sucio){
+      confirmar("Tienes cambios sin guardar en este punto. ¿Cerrar de todos modos?", "Cerrar sin guardar", true)
+        .then(function(ok){ if (ok){ sucio = false; cerrar(); } });
+      return;
+    }
     $("panel").hidden = true; document.body.classList.remove("lock");
     $("pbody").innerHTML = ""; actual = null; fotos = [];
     if (ultimoFoco && document.body.contains(ultimoFoco)) ultimoFoco.focus();
     refrescarResumen();
   }
   $("panel").addEventListener("click", function(e){ if (e.target.closest("[data-cerrar]")) cerrar(); });
-  document.addEventListener("keydown", function(e){ if (e.key === "Escape" && !$("panel").hidden) cerrar(); });
+  document.addEventListener("keydown", function(e){
+    if (e.key !== "Escape") return;
+    if (!$("dlg").hidden){ $("dlgno").click(); return; }
+    if (!$("panel").hidden) cerrar();
+  });
 
   // cambios en el formulario
   $("pbody").addEventListener("change", function(e){
@@ -639,7 +733,7 @@
     var qd = t.closest(".q"); if (qd) limpiarError(qd);
     visibilidad();
   });
-  $("pbody").addEventListener("input", function(e){ if (e.target.closest("#faporte")) { sucio = true; var qd = e.target.closest(".q"); if (qd) limpiarError(qd); } });
+  $("pbody").addEventListener("input", function(e){ if (e.target.closest("#faporte")) { sucio = true; var qd = e.target.closest(".q"); if (qd) limpiarError(qd); if (e.target.id === "pisos") visibilidad(); } });
 
   // pegar coordenadas
   $("pbody").addEventListener("click", function(e){
@@ -737,9 +831,16 @@
     f.querySelectorAll(".q.inv").forEach(limpiarError);
     function vis(n){ var qd = f.querySelector('[data-q="'+n+'"]'); return qd && !qd.closest("[hidden]") && !qd.hidden ? qd : null; }
     function req(n, ok, txt){ var qd = vis(n); if (qd && !ok){ marcarError(qd, txt || "Responde esta pregunta."); errs.push(qd); } }
-    var enc = valRadio(f,"encontro"), sv = valRadio(f,"sv_estado");
-    req("encontro", enc); req("motivo_no", valRadio(f,"motivo_no"));
-    req("coords", parseCoords($("coords").value), "Escribe las coordenadas como 4.535782, -75.672614 (dentro de Colombia).");
+    var ub = valRadio(f,"ubicacion"), sv = valRadio(f,"sv_estado");
+    req("ubicacion", ub); req("motivo_no", valRadio(f,"motivo_no"));
+    req("motivo_otro", f.elements.motivo_otro.value.trim(), "Explica brevemente el motivo.");
+    var cc = parseCoords($("coords").value);
+    req("coords", cc, "Escribe las coordenadas como 4.535782, -75.672614 (dentro de Colombia).");
+    if (cc && ub === "corregida") req("coords", Math.abs(cc.lat - actual.lat) > 1e-6 || Math.abs(cc.lon - actual.lon) > 1e-6,
+      "Elegiste que está en otro lugar, pero la coordenada sigue siendo la registrada. Pega la nueva o elige la primera opción.");
+    var dup = f.elements.duplicado_de.value.trim().toUpperCase();
+    req("duplicado_de", dup === "" || (/^P-\d{1,6}$/.test(dup) && porCodigo[dup] && dup !== actual.codigo),
+      dup === actual.codigo ? "Ese es el código de este mismo punto." : "Escribe el código de un punto de la lista, como P-1234.");
     req("sv_estado", sv);
     req("fotos", sv !== "si" || fotos.some(function(x){ return !x.cargando; }), "Agrega al menos una captura (Ctrl + V o arrastra la imagen).");
     req("fotos", !fotos.some(function(x){ return x.cargando; }), "Espera a que termine de procesar la imagen.");
@@ -747,28 +848,30 @@
     req("sv_enlace", /^https?:\/\/\S+$/.test(f.elements.sv_enlace.value.trim()), "Pega el enlace completo (empieza con https://).");
     var pv = f.elements.pisos.value.trim(), ps = +pv;
     req("pisos", pv === "" || (ps >= 1 && ps <= 80 && Math.floor(ps) === ps), "Escribe un número entero entre 1 y 80, o déjalo en blanco.");
+    req("conteo_pisos", valRadio(f,"conteo_pisos"));
     req("sotano", valRadio(f,"sotano")); req("altillo", valRadio(f,"altillo"));
     if (f.elements.material) req("material", f.elements.material.value);
     req("indicios", f.querySelector('input[name="indicios"]:checked'), "Elige al menos una opción.");
     if (f.elements.tipo_falla) req("tipo_falla", f.elements.tipo_falla.value);
     req("afecta_via", valRadio(f,"afecta_via"));
-    req("ubicacion", valRadio(f,"ubicacion"));
     return errs;
   }
   function recogerCampos(){
-    var f = $("faporte"), enc = valRadio(f,"encontro"), sv = valRadio(f,"sv_estado"), c = parseCoords($("coords").value) || {lat:"", lon:""};
+    var f = $("faporte"), ub = valRadio(f,"ubicacion"), no = ub === "no_ubicado", sv = valRadio(f,"sv_estado"), c = parseCoords($("coords").value) || {lat:"", lon:""};
+    if (ub === "confirmada") c = {lat: actual.lat, lon: actual.lon};
     var g = f.querySelector("[data-grupo]"), gVis = g && !g.hidden;
     function v(n){ var el = f.elements[n]; return el ? String(el.value).trim() : ""; }
     var campos = {
       tipo_punto: actual.tipo, n: actual.n, municipio: actual.municipio, categoria: actual.categoria, direccion: actual.direccion,
       lat_registrada: actual.lat, lon_registrada: actual.lon,
-      encontro: enc, motivo_no: enc === "no" ? valRadio(f,"motivo_no") : "",
-      lat: enc === "no" ? "" : c.lat, lon: enc === "no" ? "" : c.lon,
+      ubicacion: ub, motivo_no: no ? valRadio(f,"motivo_no") : "",
+      motivo_otro: no && valRadio(f,"motivo_no") === "otro" ? v("motivo_otro") : "",
+      lat: no ? "" : c.lat, lon: no ? "" : c.lon,
+      duplicado_de: v("duplicado_de").toUpperCase(),
       sv_estado: sv, sv_fecha: sv === "si" ? v("sv_fecha") : "", sv_enlace: sv === "si" ? v("sv_enlace") : "",
-      pisos: "", sotano: "", altillo: "", material: "", indicios: "", tipo_falla: "", afecta_via: "", extension_m: "",
-      ubicacion: enc === "no" ? "no_confirmado" : valRadio(f,"ubicacion")
+      pisos: "", conteo_pisos: "", sotano: "", altillo: "", material: "", indicios: "", tipo_falla: "", afecta_via: "", extension_m: ""
     };
-    if (enc !== "no") campos.pisos = v("pisos");
+    if (!no){ campos.pisos = v("pisos"); if (campos.pisos) campos.conteo_pisos = valRadio(f,"conteo_pisos"); }
     if (gVis && actual.tipo === "edificacion"){
       campos.sotano = valRadio(f,"sotano"); campos.altillo = valRadio(f,"altillo"); campos.material = v("material");
       campos.indicios = Array.prototype.map.call(f.querySelectorAll('input[name="indicios"]:checked'), function(x){ return x.value; }).join("; ");
@@ -811,10 +914,16 @@
     if (!actual || guardando) return;
     var p = actual, cod = p.codigo;
     if (!tieneAporte){
-      if (!sucio || confirm("¿Limpiar el formulario? Se borrará lo que escribiste y las imágenes sin guardar.")){ sucio = false; abrir(p, ultimoFoco); }
+      if (!sucio){ abrir(p, ultimoFoco); return; }
+      confirmar("¿Limpiar el formulario? Se borrará lo que escribiste y las imágenes sin guardar.", "Limpiar", true)
+        .then(function(ok){ if (ok){ sucio = false; abrir(p, ultimoFoco); } });
       return;
     }
-    if (!confirm("¿Borrar el aporte guardado de " + cod + "?\n\nSe quitará de la hoja de datos y sus fotos irán a la papelera de Drive. El punto volverá a quedar pendiente. Los mensajes del foro no se borran.")) return;
+    confirmar("¿Borrar el aporte guardado de " + cod + "?\n\nSe quitará de la hoja de datos y sus fotos irán a la papelera de Drive. El punto volverá a quedar pendiente. Los mensajes del foro no se borran.", "Borrar aporte", true)
+      .then(function(ok){ if (ok) borrarAporteYa(p); });
+  });
+  function borrarAporteYa(p){
+    var cod = p.codigo;
     guardando = true; $("pborrar").disabled = true; $("pguardar").disabled = true;
     $("pestado").textContent = "Borrando…"; $("pestado").className = "estado";
     api.borrarAporte(cod).then(function(){
@@ -825,7 +934,7 @@
       guardando = false; $("pborrar").disabled = false; $("pguardar").disabled = false;
       $("pestado").textContent = "No se pudo borrar: " + e.message; $("pestado").className = "estado err";
     });
-  });
+  }
 
   // ---------- foro de observaciones y dudas ----------
   function pintarHilos(msjs){
@@ -836,16 +945,27 @@
       var resps = msjs.filter(function(r){ return r.responde_a === m.id; }).sort(function(a,b){ return a.fecha < b.fecha ? -1 : 1; });
       var pend = !resps.length;
       return '<div class="hilo'+(pend?' pend':'')+'">'+
-        '<div class="mhead"><span class="chip '+(pend?'duda':'ok')+'">'+(pend?'Sin responder':'Respondida')+'</span><span>'+esc(fechaCorta(m.fecha))+'</span>'+
-          (esMio(m.id) ? '<button type="button" class="mborrar" data-borrarmsg="'+esc(m.id)+'" data-conresp="'+resps.length+'">Eliminar</button>' : '')+'</div>'+
-        '<p class="mtext">'+esc(m.texto)+'</p>'+
-        resps.map(function(r){ return '<div class="resp"><div class="mhead"><span>Respuesta · '+esc(fechaCorta(r.fecha))+'</span>'+
-          (esMio(r.id) ? '<button type="button" class="mborrar" data-borrarmsg="'+esc(r.id)+'" data-conresp="0">Eliminar</button>' : '')+
-          '</div><p class="mtext">'+esc(r.texto)+'</p></div>'; }).join("")+
+        mensajeHTML(m, '<span class="chip '+(pend?'duda':'ok')+'">'+(pend?'Sin responder':'Respondida')+'</span>', resps.length)+
+        resps.map(function(r){ return '<div class="resp">'+mensajeHTML(r, '<span>Respuesta</span>', 0)+'</div>'; }).join("")+
         '<div class="inl" style="justify-content:flex-start;margin-top:8px"><button type="button" class="btn sm" data-responder="1">Responder</button></div>'+
         '<div class="rbox" hidden><textarea maxlength="2000" aria-label="Respuesta"></textarea><div class="inl"><button type="button" class="btn sm primary" data-enviar="'+esc(m.id)+'">Enviar respuesta</button></div></div>'+
       '</div>';
     }).join("");
+  }
+  // cabecera + texto de un mensaje; si es propio, con "Editar" y "Eliminar"
+  function mensajeHTML(m, etiqueta, nResp){
+    var mio = esMio(m.id);
+    return '<div class="mitem" data-mid="'+esc(m.id)+'">'+
+      '<div class="mhead">'+etiqueta+'<span>'+esc(fechaCorta(m.fecha))+'</span>'+
+        (m.editado ? '<span class="edtag" title="Editado el '+esc(fechaCorta(m.editado))+'">(editado)</span>' : '')+
+        (mio ? '<span class="macc"><button type="button" class="mborrar ed" data-editarmsg="1">Editar</button>'+
+               '<button type="button" class="mborrar" data-borrarmsg="'+esc(m.id)+'" data-conresp="'+nResp+'">Eliminar</button></span>' : '')+
+      '</div>'+
+      '<p class="mtext">'+esc(m.texto)+'</p>'+
+      (mio ? '<div class="ebox" hidden><textarea maxlength="2000" aria-label="Editar mensaje">'+esc(m.texto)+'</textarea>'+
+             '<div class="inl"><button type="button" class="btn sm" data-canceledit="1">Cancelar</button>'+
+             '<button type="button" class="btn sm primary" data-guardaredit="1">Guardar cambios</button></div></div>' : '')+
+    '</div>';
   }
   function publicar(respondeA, ta){
     ta = ta || $("nuevomsg");
@@ -870,13 +990,33 @@
     pintar();
   }
   $("pbody").addEventListener("click", function(e){
+    var it = e.target.closest(".mitem"); if (!it || !actual) return;
+    var box = it.querySelector(".ebox"), txt = it.querySelector(".mtext");
+    if (e.target.closest("[data-editarmsg]")){
+      box.hidden = false; txt.hidden = true; var ta = box.querySelector("textarea"); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); return;
+    }
+    if (e.target.closest("[data-canceledit]")){ box.querySelector("textarea").value = txt.textContent; box.hidden = true; txt.hidden = false; return; }
+    var g = e.target.closest("[data-guardaredit]"); if (!g) return;
+    var nuevo = box.querySelector("textarea").value.trim(), id = it.getAttribute("data-mid"), cod = actual.codigo;
+    if (!nuevo){ toast("El mensaje no puede quedar vacío. Para quitarlo usa Eliminar."); return; }
+    if (nuevo === txt.textContent){ box.hidden = true; txt.hidden = false; return; }
+    g.disabled = true;
+    api.editarMensaje(id, nuevo).then(function(){ return api.punto(cod); })
+      .then(function(r){ actualizarForo(cod, r.mensajes || []); toast("Mensaje editado"); })
+      .catch(function(err){ g.disabled = false; toast("No se pudo editar: " + err.message); });
+  });
+  $("pbody").addEventListener("click", function(e){
     var b = e.target.closest("[data-borrarmsg]"); if (!b || !actual) return;
     var id = b.getAttribute("data-borrarmsg"), n = +b.getAttribute("data-conresp");
-    if (!confirm(n ? "¿Eliminar esta duda? También se borrará" + (n === 1 ? " su respuesta." : "n sus " + n + " respuestas.") : "¿Eliminar este mensaje?")) return;
-    var cod = actual.codigo; b.disabled = true;
-    api.borrarMensaje(id).then(function(){ delete misMsgs[id]; grabar("conteo_mis_mensajes", misMsgs); return api.punto(cod); })
-      .then(function(r){ actualizarForo(cod, r.mensajes || []); toast("Mensaje eliminado"); })
-      .catch(function(err){ b.disabled = false; toast("No se pudo eliminar: " + err.message); });
+    var cod = actual.codigo;
+    confirmar(n ? "¿Eliminar esta duda? También se borrará" + (n === 1 ? " su respuesta." : "n sus " + n + " respuestas.") : "¿Eliminar este mensaje?", "Eliminar", true)
+      .then(function(ok){
+        if (!ok) return;
+        b.disabled = true;
+        api.borrarMensaje(id).then(function(){ delete misMsgs[id]; grabar("conteo_mis_mensajes", misMsgs); return api.punto(cod); })
+          .then(function(r){ actualizarForo(cod, r.mensajes || []); toast("Mensaje eliminado"); })
+          .catch(function(err){ b.disabled = false; toast("No se pudo eliminar: " + err.message); });
+      });
   });
 
   // ---------- inicio ----------

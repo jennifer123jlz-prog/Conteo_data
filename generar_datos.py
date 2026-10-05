@@ -47,7 +47,12 @@ for r in filas:
 def num(c):
     try: return int(c.split("-")[1])
     except Exception: return 0
-puntos.sort(key=lambda p: (p["municipio"], num(p["codigo"])))
+# primero los municipios de mayor interes, en este orden; luego el resto por nombre
+PRIORIDAD = ["Cali", "Pereira", "Manizales", "Buenaventura", "Armenia", "Quibdó"]
+def orden(p):
+    m = p["municipio"]
+    return (PRIORIDAD.index(m) if m in PRIORIDAD else len(PRIORIDAD), m, num(p["codigo"]))
+puntos.sort(key=orden)
 # numero correlativo 1..N: es lo que la persona usa para su rango
 for i, p in enumerate(puntos, 1):
     p["n"] = i
