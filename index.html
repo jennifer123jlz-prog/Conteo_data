@@ -199,7 +199,7 @@
       <li>Escribe el rango de N° que te asignaron y pulsa <b>Ver mis puntos</b>. Puedes filtrar por municipio.</li>
       <li>Pulsa <b>Abrir en Google Maps</b> (se abre en otra pestaña). Ahí entra a Street View arrastrando el muñequito amarillo o tocando la foto de la calle.</li>
       <li>Vuelve a esta página y pulsa <b>Registrar aporte</b>. Si el edificio está en otro lugar, en Maps haz clic derecho sobre él, copia las coordenadas y pégalas en el formulario.</li>
-      <li>Toma una captura y pégala en el formulario con <b>Ctrl + V</b>, o arrastra el archivo. No necesitas escribir un nombre para el archivo: se guarda automáticamente con uno propio.</li>
+      <li>Toma una captura y pégala en el formulario con <b>Ctrl + V</b>, o arrastra el archivo. No se requiere colocar nombre al archivo.</li>
       <li>Si tienes una duda, escríbela en <b>Observaciones o dudas</b> del mismo punto. Las respuestas aparecen ahí.</li>
     </ol>
   </details>
@@ -274,14 +274,16 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script src="datos.js"></script>
 <script>
 (function(){
   "use strict";
   // === CONFIGURACION ============================================
-  // URL de la aplicacion web de Google Apps Script (termina en /exec).
+  // La URL de la aplicacion web de Google Apps Script (termina en /exec) va en
+  // config.js, para que actualizar este archivo no la borre.
   // Vacia = modo prototipo: todo se guarda solo en este navegador.
-  var API_URL = "https://script.google.com/macros/s/AKfycbyqOFtJcj_KWwJ1yoPUhFhG9r-cKz1F5tvHb43e8Gw5EQb8FKRkz_lUJ4EWk6lLTmHh/exec";
+  var API_URL = (window.CONFIG && window.CONFIG.API_URL) || "";
   // ==============================================================
 
   var PAGE = 25, MAX_FOTOS = 3, MAX_LADO = 1600;
@@ -610,13 +612,7 @@
         '<b>Déjalo en blanco</b> si no se puede determinar'+(edif ? '' : ' o si es una vía, puente o deslizamiento')+'.</span>'+
         '<input id="pisos" name="pisos" type="number" min="1" max="80" step="1" inputmode="numeric" placeholder="En blanco = no se puede determinar">', ' data-nono="1"')+
       q("conteo_pisos", '<span class="lbl">Conteo de pisos</span><span class="h">Seguro: se ven claramente todos los niveles. Aproximado: parte tapada, doble altura o estimaste por perspectiva.</span>'+radios("conteo_pisos", OPC.conteo_pisos, true), ' data-conpisos="1"')+
-      (edif ?
-      '<div class="grp" data-grupo="edif"><h3>Edificio</h3>'+
-        q("sotano", '<span class="lbl">¿Se ve sótano o semisótano?</span>'+radios("sotano", OPC.si_no_ns, true))+
-        q("altillo", '<span class="lbl">¿Altillo, mezanine o piso en la azotea?</span>'+radios("altillo", OPC.si_no_ns, true))+
-        q("material", '<label class="lbl" for="material">Material aparente</label>'+select("material", OPC.material))+
-        q("indicios", '<span class="lbl">¿Indicios geotécnicos o de asentamiento?</span><span class="h">Elige todos los que veas.</span>'+checks("indicios", OPC.indicios))+
-      '</div>' :
+      (edif ? '' :
       '<div class="grp" data-grupo="geo"><h3>Falla geotécnica</h3>'+
         q("tipo_falla", '<label class="lbl" for="tipo_falla">Tipo de falla</label>'+select("tipo_falla", OPC.tipo_falla))+
         q("afecta_via", '<span class="lbl">¿Afecta el paso por la vía?</span>'+radios("afecta_via", OPC.afecta_via))+
@@ -849,9 +845,6 @@
     var pv = f.elements.pisos.value.trim(), ps = +pv;
     req("pisos", pv === "" || (ps >= 1 && ps <= 80 && Math.floor(ps) === ps), "Escribe un número entero entre 1 y 80, o déjalo en blanco.");
     req("conteo_pisos", valRadio(f,"conteo_pisos"));
-    req("sotano", valRadio(f,"sotano")); req("altillo", valRadio(f,"altillo"));
-    if (f.elements.material) req("material", f.elements.material.value);
-    req("indicios", f.querySelector('input[name="indicios"]:checked'), "Elige al menos una opción.");
     if (f.elements.tipo_falla) req("tipo_falla", f.elements.tipo_falla.value);
     req("afecta_via", valRadio(f,"afecta_via"));
     return errs;
@@ -872,10 +865,6 @@
       pisos: "", conteo_pisos: "", sotano: "", altillo: "", material: "", indicios: "", tipo_falla: "", afecta_via: "", extension_m: ""
     };
     if (!no){ campos.pisos = v("pisos"); if (campos.pisos) campos.conteo_pisos = valRadio(f,"conteo_pisos"); }
-    if (gVis && actual.tipo === "edificacion"){
-      campos.sotano = valRadio(f,"sotano"); campos.altillo = valRadio(f,"altillo"); campos.material = v("material");
-      campos.indicios = Array.prototype.map.call(f.querySelectorAll('input[name="indicios"]:checked'), function(x){ return x.value; }).join("; ");
-    }
     if (gVis && actual.tipo === "geotecnico"){ campos.tipo_falla = v("tipo_falla"); campos.afecta_via = valRadio(f,"afecta_via"); campos.extension_m = v("extension_m"); }
     return campos;
   }
