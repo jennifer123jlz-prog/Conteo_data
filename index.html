@@ -378,7 +378,14 @@
       datos.clave = clave();
       p = fetch(API_URL, { method:"POST", body: JSON.stringify(datos) }); // text/plain: sin preflight CORS
     }
-    return p.then(function(r){ return r.json(); }).then(function(j){
+    return p.then(function(r){ return r.text(); }).then(function(t){
+      try { return JSON.parse(t); } catch(e){
+        // Google devolvio una pagina HTML (error del script, permisos o despliegue): mostrar su texto
+        var txt = String(t || "").replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, " ")
+          .replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim().slice(0, 220);
+        throw new Error("Google respondió con una página en vez de datos" + (txt ? " — dice: «" + txt + "»" : "") + ".");
+      }
+    }).then(function(j){
       if (j && j.error === "clave" && !reintento){
         return pedirClave().then(function(ok){
           if (!ok) throw new Error("Falta la clave del equipo");
