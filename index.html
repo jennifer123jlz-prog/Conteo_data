@@ -87,6 +87,12 @@
   .chip.ok{background:var(--ok);color:var(--ok-ink);border-color:transparent}
   .chip.mun-chip{background:transparent;border-color:var(--muted);color:var(--ink)}
   .chip.mun-chip::before{content:"◉ ";color:var(--accent);font-size:10px}
+  .chip.eval{background:var(--geo-bg);color:var(--geo);border-color:var(--geo)}
+  .card.eval{border-color:var(--geo);border-style:dashed}
+  .nvbox{border:2px solid var(--geo);background:var(--geo-bg);border-radius:10px;padding:10px 12px;margin:0 0 18px}
+  .nvbox label{display:flex;gap:10px;align-items:flex-start;font-weight:700;color:var(--ink);cursor:pointer}
+  .nvbox input{width:20px;height:20px;flex:none;margin:1px 0 0}
+  .nvbox .h{display:block;margin:4px 0 0 30px;color:var(--muted);font-size:13px;font-weight:400}
   .chip.duda{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
   .ubi-l{display:block;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:2px 0 2px}
   .dir{margin:0;font-weight:600}
@@ -233,6 +239,7 @@
       <button type="button" data-est="pend" aria-pressed="true">Pendientes</button>
       <button type="button" data-est="hecho" aria-pressed="false">Hechos</button>
       <button type="button" data-est="dudas" aria-pressed="false" id="segdudas">Con dudas</button>
+      <button type="button" data-est="evaluar" aria-pressed="false" id="segeval">Pendientes de evaluación</button>
       <button type="button" data-est="todos" aria-pressed="false">Todos</button>
     </div>
     <span class="count" id="count" aria-live="polite"></span>
@@ -380,10 +387,10 @@
   var demoFotos = {}; // en memoria: las imagenes no caben bien en localStorage
   var local = {
     resumen: function(){
-      var db = demoDB(), hechos = {}, dudas = {};
-      Object.keys(db.aportes).forEach(function(c){ hechos[c] = db.aportes[c].fecha; });
+      var db = demoDB(), hechos = {}, dudas = {}, evaluar = {};
+      Object.keys(db.aportes).forEach(function(c){ hechos[c] = db.aportes[c].fecha; if (db.aportes[c].dano_no_verificado === "si") evaluar[c] = true; });
       contarDudas(db.mensajes, dudas);
-      return Promise.resolve({hechos:hechos, dudas:dudas});
+      return Promise.resolve({hechos:hechos, dudas:dudas, evaluar:evaluar});
     },
     punto: function(c){
       var db = demoDB(), a = db.aportes[c] || null;
@@ -433,7 +440,7 @@
   function esMio(id){ return !!misMsgs[id]; }
 
   // ---------- estado de la lista ----------
-  var hechos = {}, dudas = {};
+  var hechos = {}, dudas = {}, evaluar = {};
   var rango = leer("conteo_rango_v1", null);
   var est = { q:"", mun:"", est:"pend", page:1 };
   var lista = [];
@@ -455,7 +462,7 @@
 
   function refrescarResumen(){
     return api.resumen().then(function(r){
-      hechos = r.hechos || {}; dudas = r.dudas || {};
+      hechos = r.hechos || {}; dudas = r.dudas || {}; evaluar = r.evaluar || {};
       $("errconn").hidden = true; pintar();
     }).catch(function(e){
       $("errconn").hidden = false;
@@ -487,9 +494,10 @@
     lista = puntos.filter(function(p){
       if (!enRango(p)) return false;
       if (est.mun && p.municipio !== est.mun) return false;
-      var h = !!hechos[p.codigo];
+      var h = !!hechos[p.codigo], ev = !!evaluar[p.codigo];
       if (est.est === "pend" && h) return false;
-      if (est.est === "hecho" && !h) return false;
+      if (est.est === "hecho" && (!h || ev)) return false;
+      if (est.est === "evaluar" && !ev) return false;
       if (est.est === "dudas" && !dudas[p.codigo]) return false;
       return !q || p._b.indexOf(q) !== -1;
     });
@@ -500,14 +508,15 @@
   function ubiTxt(p){ return p.ubicacion || [p.direccion, p.municipio].filter(Boolean).join(", ") || "Sin ubicación en el reporte"; }
   function coordTxt(p){ return p.lat.toFixed(6) + ", " + p.lon.toFixed(6); }
   function tarjeta(p){
-    var h = !!hechos[p.codigo], nd = dudas[p.codigo] || 0;
-    return '<article class="card'+(h?' done':'')+'" data-cod="'+esc(p.codigo)+'">'+
+    var ev = !!evaluar[p.codigo], h = !!hechos[p.codigo] && !ev, nd = dudas[p.codigo] || 0;
+    return '<article class="card'+(h?' done':'')+(ev?' eval':'')+'" data-cod="'+esc(p.codigo)+'">'+
       '<div>'+
         '<div class="cardhead">'+
           '<span class="num">N° '+p.n+'</span><span class="code">'+esc(p.codigo)+'</span>'+
           '<span class="chip'+(p.tipo==="geotecnico"?' geo':'')+'">'+esc(p.categoria)+'</span>'+
           '<span class="chip mun-chip" title="Municipio">'+esc(p.municipio)+'</span>'+
           (h ? '<span class="chip ok">✓ Hecho</span>' : '')+
+          (ev ? '<span class="chip eval">Daño no verificado – pendiente de evaluación</span>' : '')+
           (nd ? '<span class="chip duda">'+nd+(nd===1?' duda sin responder':' dudas sin responder')+'</span>' : '')+
         '</div>'+
         '<span class="ubi-l">Ubicación según la página</span>'+
@@ -519,7 +528,7 @@
       '<div class="actions">'+
         '<a class="btn ext" href="'+urlMaps(p.lat,p.lon)+'" target="_blank" rel="noopener">Abrir en Google Maps</a>'+
         '<a class="btn ext" href="'+urlFicha(p)+'" target="_blank" rel="noopener">Ver en la página original</a>'+
-        '<button type="button" class="btn '+(h?'done':'primary')+'" data-reg="1">'+(h?'Ver o corregir aporte':'Registrar aporte')+'</button>'+
+        '<button type="button" class="btn '+(h?'done':'primary')+'" data-reg="1">'+(h||ev?'Ver o corregir aporte':'Registrar aporte')+'</button>'+
       '</div>'+
     '</article>';
   }
@@ -537,6 +546,8 @@
     $("proglabel").textContent = n+" de "+base.length+" hechos ("+pct+"%)" + (rango ? " en tu rango" : "");
     var totD = Object.keys(dudas).filter(function(c){ return porCodigo[c] && enRango(porCodigo[c]); }).length;
     $("segdudas").textContent = "Con dudas" + (totD ? " (" + totD + ")" : "");
+    var totE = Object.keys(evaluar).filter(function(c){ return porCodigo[c] && enRango(porCodigo[c]); }).length;
+    $("segeval").textContent = "Pendientes de evaluación" + (totE ? " (" + totE + ")" : "");
     document.querySelectorAll(".seg button").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-est")===est.est)); });
   }
   $("q").addEventListener("input", function(e){ est.q = e.target.value; est.page = 1; pintar(); });
@@ -589,6 +600,10 @@
       '</div></details>'+
       '<form id="faporte" novalidate autocomplete="off">'+
       '<h2 class="sec-t">Aporte</h2>'+
+      '<div class="nvbox" data-q="dano_nv"><label><input type="checkbox" id="dano_nv" name="dano_nv"> Daño no verificado – pendiente de evaluación</label>'+
+        '<span class="h">Márcalo antes de empezar si la descripción del reporte no indica daño en la edificación. '+
+        'El punto queda aparte (pestaña "Pendientes de evaluación") y no hace falta llenar lo demás.</span></div>'+
+      '<div id="resto">'+
       q("ubicacion", '<span class="lbl">¿Ubicaste en el mapa el edificio (o lugar) del reporte?</span>'+
         '<span class="h">Búscalo en Google Maps con la ubicación y la descripción del reporte.</span>'+radios("ubicacion", OPC.ubicacion))+
       q("motivo_no", '<span class="lbl">¿Por qué no se pudo ubicar?</span><span class="h">Elige el motivo principal.</span>'+radios("motivo_no", OPC.motivo_no), ' data-si="no"')+
@@ -631,6 +646,7 @@
       q("duplicado_de", '<label class="lbl" for="duplicado_de">¿Parece duplicado de otro punto? (opcional)</label>'+
         '<span class="h">Si otro punto de la lista es el mismo edificio o lugar, escribe su código. Ejemplo: P-1234.</span>'+
         '<input id="duplicado_de" name="duplicado_de" type="text" maxlength="12" placeholder="P-1234" autocapitalize="characters">')+
+      '</div>'+
     '</form>'+
     '<section class="foro" aria-labelledby="foro-t">'+
       '<h2 class="sec-t" id="foro-t">Observaciones o dudas</h2>'+
@@ -646,6 +662,7 @@
 
   function visibilidad(){
     var f = $("faporte"); if (!f) return;
+    $("resto").hidden = $("dano_nv").checked;
     var ub = valRadio(f, "ubicacion"), no = ub === "no_ubicado", sv = valRadio(f, "sv_estado");
     f.querySelectorAll('[data-si="no"]').forEach(function(el){ el.hidden = !no; });
     f.querySelectorAll('[data-otro]').forEach(function(el){ el.hidden = !(no && valRadio(f, "motivo_no") === "otro"); });
@@ -705,6 +722,7 @@
   }
   function cargarAporte(a){
     var f = $("faporte");
+    $("dano_nv").checked = a.dano_no_verificado === "si";
     ["ubicacion","motivo_no","sv_estado","afecta_via","conteo_pisos","conjunto"].forEach(function(n){ if (a[n]) setRadio(f, n, a[n]); });
     ["motivo_otro","duplicado_de","sv_fecha","sv_enlace","tipo_falla","extension_m"].forEach(function(n){ var el = f.elements[n]; if (el && a[n] != null && a[n] !== "") el.value = a[n]; });
     if (a.lat !== "" && a.lat != null && a.lon !== "" && a.lon != null) $("coords").value = a.lat + ", " + a.lon;
@@ -875,6 +893,10 @@
     return errs;
   }
   function recogerCampos(){
+    if ($("dano_nv").checked){
+      return {tipo_punto: actual.tipo, n: actual.n, municipio: actual.municipio, categoria: actual.categoria, direccion: actual.direccion,
+              lat_registrada: actual.lat, lon_registrada: actual.lon, dano_no_verificado: "si"};
+    }
     var f = $("faporte"), ub = valRadio(f,"ubicacion"), no = ub === "no_ubicado", sv = valRadio(f,"sv_estado"), c = parseCoords($("coords").value) || {lat:"", lon:""};
     if (ub === "confirmada") c = {lat: actual.lat, lon: actual.lon};
     var g = f.querySelector("[data-grupo]"), gVis = g && !g.hidden;
@@ -897,6 +919,7 @@
       if (campos.pisos_min || campos.pisos_max) campos.conteo_pisos = valRadio(f,"conteo_pisos");
     }
     if (gVis && actual.tipo === "geotecnico"){ campos.tipo_falla = v("tipo_falla"); campos.afecta_via = valRadio(f,"afecta_via"); campos.extension_m = v("extension_m"); }
+    campos.dano_no_verificado = "";
     return campos;
   }
   $("pguardar").addEventListener("click", function(){
@@ -910,14 +933,16 @@
     }
     var payload = {
       codigo: actual.codigo, campos: recogerCampos(),
-      fotos: fotos.map(function(f){ return f.tipo === "nueva" ? {base64:f.base64} : {mantener:f.nombre}; })
+      fotos: $("dano_nv").checked ? [] : fotos.map(function(f){ return f.tipo === "nueva" ? {base64:f.base64} : {mantener:f.nombre}; })
     };
     guardando = true; $("pguardar").disabled = true; $("pestado").textContent = "Guardando…"; $("pestado").className = "estado";
     var cod = actual.codigo;
     api.guardar(payload).then(function(r){
       guardando = false; sucio = false; tieneAporte = true;
       hechos[cod] = (r.aporte && r.aporte.fecha) || new Date().toISOString();
+      if (payload.campos.dano_no_verificado === "si") evaluar[cod] = true; else delete evaluar[cod];
       if (actual && actual.codigo === cod){
+        if (!payload.fotos.length) fotos = [];
         fotos = fotos.map(function(f, i){ return {tipo:"guardada", nombre:nombreFoto(cod, i), src:f.src}; });
         pintarFotos();
         $("pguardar").disabled = false; $("pguardar").textContent = "Guardar cambios";
@@ -948,7 +973,7 @@
     $("pestado").textContent = "Borrando…"; $("pestado").className = "estado";
     api.borrarAporte(cod).then(function(){
       guardando = false; $("pborrar").disabled = false;
-      delete hechos[cod]; pintar(); toast("Aporte de " + cod + " borrado");
+      delete hechos[cod]; delete evaluar[cod]; pintar(); toast("Aporte de " + cod + " borrado");
       sucio = false; if (actual && actual.codigo === cod) abrir(p, ultimoFoco);
     }).catch(function(e){
       guardando = false; $("pborrar").disabled = false; $("pguardar").disabled = false;
