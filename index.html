@@ -182,6 +182,13 @@
   .dlg input{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;margin:0 0 14px}
   .dlg .inl{justify-content:flex-end;flex-wrap:wrap}
   .btn.danger-fill{background:var(--err);border-color:var(--err);color:var(--panel)}
+  .cargando{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}
+  .cargando .caja{text-align:center;max-width:420px}
+  .cargando .giro{width:56px;height:56px;margin:0 auto 18px;border:5px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:giro 0.9s linear infinite}
+  .cargando h2{font:700 clamp(24px,5vw,32px)/1.2 var(--serif);margin:0 0 8px}
+  .cargando p{margin:0 0 18px;color:var(--muted)}
+  @keyframes giro{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.cargando .giro{animation-duration:3s}}
   .toast{position:fixed;left:16px;bottom:16px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;z-index:30;max-width:90vw}
 
   @media (max-width:700px){
@@ -272,6 +279,15 @@
       <button class="btn danger" type="button" id="pborrar">Borrar aporte</button>
       <div class="estado" id="pestado" role="status" aria-live="polite"></div>
     </div>
+  </div>
+</div>
+
+<div class="cargando" id="cargando" hidden role="status" aria-live="polite">
+  <div class="caja">
+    <div class="giro" aria-hidden="true"></div>
+    <h2>Actualizando…</h2>
+    <p>Cargando el avance del equipo. Puede tardar unos segundos.</p>
+    <button class="btn" type="button" id="sinesperar" hidden>Entrar sin esperar</button>
   </div>
 </div>
 
@@ -460,11 +476,31 @@
       '<optgroup label="Otros municipios">' + resto.map(opt).join("") + '</optgroup>';
   })();
 
+  // Último avance conocido, guardado en este navegador: se muestra al instante
+  // al entrar mientras llega el dato actualizado.
+  var actualizando = false;
+  var RKEY = "conteo_resumen_cache_v1";
+  (function(){
+    if (DEMO) return;
+    var c = leer(RKEY, null);
+    if (c && c.url === API_URL && c.r){ hechos = c.r.hechos || {}; dudas = c.r.dudas || {}; evaluar = c.r.evaluar || {}; }
+  })();
+  var primeraCarga = !DEMO;
+  if (primeraCarga){
+    $("cargando").hidden = false;
+    setTimeout(function(){ if (!$("cargando").hidden) $("sinesperar").hidden = false; }, 4000);
+  }
+  function quitarCarga(){ primeraCarga = false; $("cargando").hidden = true; }
+  $("sinesperar").addEventListener("click", quitarCarga);
   function refrescarResumen(){
+    actualizando = true; pintar();
     return api.resumen().then(function(r){
+      actualizando = false;
       hechos = r.hechos || {}; dudas = r.dudas || {}; evaluar = r.evaluar || {};
-      $("errconn").hidden = true; pintar();
+      if (!DEMO) grabar(RKEY, {url: API_URL, t: Date.now(), r: r});
+      $("errconn").hidden = true; pintar(); quitarCarga();
     }).catch(function(e){
+      actualizando = false; quitarCarga();
       $("errconn").hidden = false;
       $("errconn").textContent = /clave/i.test(e.message) ? "La clave del equipo no es correcta o falta. Recarga la página para escribirla de nuevo." :
         "No se pudo cargar el avance del equipo (" + e.message + "). Revisa tu conexión y recarga la página.";
@@ -543,7 +579,7 @@
     var base = puntos.filter(enRango), n = base.filter(function(p){ return hechos[p.codigo]; }).length;
     var pct = base.length ? Math.round(n/base.length*100) : 0;
     $("barfill").style.width = pct+"%";
-    $("proglabel").textContent = n+" de "+base.length+" hechos ("+pct+"%)" + (rango ? " en tu rango" : "");
+    $("proglabel").textContent = n+" de "+base.length+" hechos ("+pct+"%)" + (rango ? " en tu rango" : "") + (actualizando ? " · actualizando…" : "");
     var totD = Object.keys(dudas).filter(function(c){ return porCodigo[c] && enRango(porCodigo[c]); }).length;
     $("segdudas").textContent = "Con dudas" + (totD ? " (" + totD + ")" : "");
     var totE = Object.keys(evaluar).filter(function(c){ return porCodigo[c] && enRango(porCodigo[c]); }).length;
