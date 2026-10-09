@@ -590,7 +590,7 @@
     var totD = Object.keys(dudas).filter(function(c){ return porCodigo[c] && enRango(porCodigo[c]); }).length;
     $("segdudas").textContent = "Con dudas" + (totD ? " (" + totD + ")" : "");
     var totE = Object.keys(evaluar).filter(function(c){ return porCodigo[c] && enRango(porCodigo[c]); }).length;
-    $("segeval").textContent = "Pendientes de evaluación" + (totE ? " (" + totE + ")" : "");
+    $("segeval").textContent = "Daño no verificado" + (totE ? " (" + totE + ")" : "");
     document.querySelectorAll(".seg button").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-est")===est.est)); });
   }
   $("q").addEventListener("input", function(e){ est.q = e.target.value; est.page = 1; pintar(); });
