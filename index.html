@@ -246,7 +246,7 @@
       <button type="button" data-est="pend" aria-pressed="true">Pendientes</button>
       <button type="button" data-est="hecho" aria-pressed="false">Hechos</button>
       <button type="button" data-est="dudas" aria-pressed="false" id="segdudas">Con dudas</button>
-      <button type="button" data-est="evaluar" aria-pressed="false" id="segeval">Pendientes de evaluación</button>
+      <button type="button" data-est="evaluar" aria-pressed="false" id="segeval">Daño no verificado</button>
       <button type="button" data-est="todos" aria-pressed="false">Todos</button>
     </div>
     <span class="count" id="count" aria-live="polite"></span>
@@ -645,7 +645,7 @@
       '<h2 class="sec-t">Aporte</h2>'+
       '<div class="nvbox" data-q="dano_nv"><label><input type="checkbox" id="dano_nv" name="dano_nv"> Daño no verificado – pendiente de evaluación</label>'+
         '<span class="h">Márcalo antes de empezar si la descripción del reporte no indica daño en la edificación. '+
-        'El punto queda aparte (pestaña "Pendientes de evaluación") y no hace falta llenar lo demás.</span></div>'+
+        'El punto queda aparte (pestaña "Daño no verificado") y no hace falta llenar lo demás.</span></div>'+
       '<div id="resto">'+
       q("ubicacion", '<span class="lbl">¿Ubicaste en el mapa el edificio (o lugar) del reporte?</span>'+
         '<span class="h">Búscalo en Google Maps con la ubicación y la descripción del reporte.</span>'+radios("ubicacion", OPC.ubicacion))+
